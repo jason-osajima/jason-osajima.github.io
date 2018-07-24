@@ -569,16 +569,12 @@ $$&lt;/div&gt;
 \dfrac{d{a^{[3]}}}{d{\mathbf{z}^{[2]}}}$$&lt;/div&gt;
 &lt;div class="math"&gt;$$\dfrac{\partial{J}}{\partial{\mathbf{z}^{[2]}}} = \delta^{[3]}
 \begin{bmatrix}
-\\
-    W^{[3]}_{11} &amp;amp; 
-    W^{[3]}_{12}
-\\\\
+W^{[3]}_{11} &amp;amp; 
+W^{[3]}_{12}
 \end{bmatrix}
 \begin{bmatrix}
-\\
-    g'(z^{[2]}_{11}) &amp;amp; 0 \\\\ 
-    0 &amp;amp; g'(z^{[2]}_{21})
-\\\\
+g'(z^{[2]}_{11}) &amp;amp; 0 \\\\ 
+0 &amp;amp; g'(z^{[2]}_{21})
 \end{bmatrix}
 $$&lt;/div&gt;
 &lt;p&gt;So this is the Jacobian Matrix of &lt;span class="math"&gt;\(J\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[2]}\)&lt;/span&gt;. But notice that this matrix is &lt;span class="math"&gt;\((1,2)\)&lt;/span&gt; but &lt;span class="math"&gt;\(\textbf{z}^{[2]}\)&lt;/span&gt; is &lt;span class="math"&gt;\((2,1)\)&lt;/span&gt;. We can define a gradient matrix similar to what we did for the weights and bias parameters that match the dimensions of &lt;span class="math"&gt;\(\textbf{z}^{[2]}\)&lt;/span&gt; called &lt;span class="math"&gt;\(\boldsymbol{\delta}^{[2]}\)&lt;/span&gt;:&lt;/p&gt;
@@ -588,59 +584,48 @@ $$&lt;/div&gt;
 $$&lt;/div&gt;
 &lt;p&gt;Recall that given three matricies &lt;span class="math"&gt;\(\textbf{A}\)&lt;/span&gt;, &lt;span class="math"&gt;\(\textbf{B}\)&lt;/span&gt;, and &lt;span class="math"&gt;\(\textbf{d}\)&lt;/span&gt; the &lt;span class="math"&gt;\((\textbf{ABC})^T = \textbf{C}^T\textbf{B}^T\textbf{A}^T\)&lt;/span&gt;&lt;/p&gt;
 &lt;div class="math"&gt;$$
-\boldsymbol{\delta}^{[2]} = \begin{bmatrix}
-\\
-    g'(z^{[2]}_{11}) &amp;amp; 0 \\\\ 
-    0 &amp;amp; g'(z^{[2]}_{21})
-\\\\
+\boldsymbol{\delta}^{[2]} = 
+\begin{bmatrix}
+g'(z^{[2]}_{11}) &amp;amp; 0 \\\\ 
+0 &amp;amp; g'(z^{[2]}_{21})
 \end{bmatrix}
 \begin{bmatrix}
-\\
-    W^{[3]}_{11} \\\\ 
-    W^{[3]}_{12}
-\\\\
+W^{[3]}_{11} \\\\ 
+W^{[3]}_{12}
 \end{bmatrix}
 \delta^{[3]}
 $$&lt;/div&gt;
-&lt;h1&gt;$$&lt;/h1&gt;
-&lt;div class="math"&gt;\begin{bmatrix}
-\\
-    g'(z^{[2]}_{11})W^{[3]}_{11}\delta^{[3]} \\\\ 
-    g'(z^{[2]}_{21})W^{[3]}_{12}\delta^{[3]}
-\\\\
-\end{bmatrix}&lt;/div&gt;
-&lt;p&gt;
-$$&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\boldsymbol{\delta}^{[2]} = 
+\begin{bmatrix}
+g'(z^{[2]}_{11})W^{[3]}_{11}\delta^{[3]} \\\\ 
+g'(z^{[2]}_{21})W^{[3]}_{12}\delta^{[3]}
+\end{bmatrix}
+$$&lt;/div&gt;
 &lt;p&gt;Notice when we rearranged the products in the matrix, we get:&lt;/p&gt;
 &lt;div class="math"&gt;$$
 \boldsymbol{\delta}^{[2]} = 
 \begin{bmatrix}
-\\
-    W^{[3]}_{11}\delta^{[3]}g'(z^{[2]}_{11}) \\\\ 
-    W^{[3]}_{12}\delta^{[3]}g'(z^{[2]}_{21})
-\\\\
+W^{[3]}_{11}\delta^{[3]}g'(z^{[2]}_{11}) \\\\ 
+W^{[3]}_{12}\delta^{[3]}g'(z^{[2]}_{21})
 \end{bmatrix}
 $$&lt;/div&gt;
-&lt;h1&gt;$$&lt;/h1&gt;
-&lt;div class="math"&gt;\begin{bmatrix}
-\\
-    W^{[3]}_{11}\delta^{[3]} \\\\ 
-    W^{[3]}_{12}\delta^{[3]}
-\\\\
-\end{bmatrix}&lt;/div&gt;
-&lt;p&gt;
+&lt;div class="math"&gt;$$
+\boldsymbol{\delta}^{[2]} = 
+\begin{bmatrix}
+W^{[3]}_{11}\delta^{[3]} \\\\ 
+W^{[3]}_{12}\delta^{[3]}
+\end{bmatrix}
 *
 g'(\textbf{z}^{[2]})
-$$&lt;/p&gt;
+$$&lt;/div&gt;
 &lt;p&gt;Where &lt;span class="math"&gt;\(*\)&lt;/span&gt; indicates elementwise multiplication between two matricies. &lt;span class="math"&gt;\(g'(\textbf{z}^{[2]})\)&lt;/span&gt; is a columnwise vector of the derivative of ReLU &lt;span class="math"&gt;\(g'(z)\)&lt;/span&gt; applied to each entry of &lt;span class="math"&gt;\(\textbf{z}^{[2]}\)&lt;/span&gt;.&lt;/p&gt;
 &lt;p&gt;Next, we can decompose the result into:&lt;/p&gt;
 &lt;div class="math"&gt;$$
 \boldsymbol{\delta}^{[2]}= 
 \begin{bmatrix}
-\\
-    W^{[3]}_{11} \\\\ 
-    W^{[3]}_{12}
-\\\\
+W^{[3]}_{11} \\\\ 
+W^{[3]}_{12}
 \end{bmatrix}
 \delta^{[3]}
 *
@@ -660,24 +645,24 @@ $$&lt;/div&gt;
 \dfrac{\partial{J}}{\partial{\mathbf{z}^{[2]}}}
 \dfrac{\partial{\mathbf{z}^{[2]}}}{\partial{\mathbf{W}^{[2]}}}
 $$&lt;/div&gt;
-&lt;p&gt;$$
+&lt;div class="math"&gt;$$
 \dfrac{\partial{J}}{\partial{\mathbf{W}^{[2]}}} = 
 \boldsymbol{\delta}^{[2]T}
 \begin{bmatrix}
-a^{[2]}&lt;em 41&gt;{11} &amp;amp;
+a^{[2]}_{11} &amp;amp;
 \dotsc &amp;amp; 
-a^{[2]}&lt;/em&gt; &amp;amp;
+a^{[2]}_{41} &amp;amp;
 0 &amp;amp;
 \dotsc &amp;amp;
-0 \\&lt;/p&gt;
-&lt;p&gt;0 &amp;amp;
+0 \\\\
+0 &amp;amp;
 \dotsc &amp;amp; 
 0 &amp;amp;
-a^{[2]}&lt;em 41&gt;{11} &amp;amp; 
+a^{[2]}_{11} &amp;amp; 
 \dotsc &amp;amp;
-a^{[2]}&lt;/em&gt; &amp;amp; \\
+a^{[2]}_{41} &amp;amp; \\\\
 \end{bmatrix}
-$$&lt;/p&gt;
+$$&lt;/div&gt;
 &lt;div class="math"&gt;$$
  = 
 \begin{bmatrix}
@@ -700,23 +685,21 @@ a^{[2]}_{41} &amp;amp; \\\\
 \end{bmatrix}
 $$&lt;/div&gt;
 &lt;p&gt;And we get this fun &lt;span class="math"&gt;\((1, 8)\)&lt;/span&gt; Jacobian matrix:&lt;/p&gt;
-&lt;p&gt;$$\dfrac{\partial{J}}{\partial{\textbf{W}^{[2]}}} = 
+&lt;div class="math"&gt;$$\dfrac{\partial{J}}{\partial{\textbf{W}^{[2]}}} = 
 \begin{bmatrix}
-\
-\delta^{[2]}&lt;em 11&gt;{11}a^{[2]}&lt;/em&gt; &amp;amp; 
-\delta^{[2]}&lt;em 21&gt;{11}a^{[2]}&lt;/em&gt; &amp;amp;
-\delta^{[2]}&lt;em 31&gt;{11}a^{[2]}&lt;/em&gt; &amp;amp; 
-\delta^{[2]}&lt;em 41&gt;{11}a^{[2]}&lt;/em&gt; &amp;amp;&lt;/p&gt;
-&lt;p&gt;\delta^{[2]}&lt;em 11&gt;{21}a^{[2]}&lt;/em&gt; &amp;amp; 
-\delta^{[2]}&lt;em 21&gt;{21}a^{[2]}&lt;/em&gt; &amp;amp;
-\delta^{[2]}&lt;em 31&gt;{21}a^{[2]}&lt;/em&gt; &amp;amp; 
-\delta^{[2]}&lt;em 41&gt;{21}a^{[2]}&lt;/em&gt; \\
+\delta^{[2]}_{11}a^{[2]}_{11} &amp;amp; 
+\delta^{[2]}_{11}a^{[2]}_{21} &amp;amp;
+\delta^{[2]}_{11}a^{[2]}_{31} &amp;amp; 
+\delta^{[2]}_{11}a^{[2]}_{41} &amp;amp;
+\delta^{[2]}_{21}a^{[2]}_{11} &amp;amp; 
+\delta^{[2]}_{21}a^{[2]}_{21} &amp;amp;
+\delta^{[2]}_{21}a^{[2]}_{31} &amp;amp; 
+\delta^{[2]}_{21}a^{[2]}_{41}
 \end{bmatrix}
-$$&lt;/p&gt;
+$$&lt;/div&gt;
 &lt;p&gt;So this is our Jacobian. But we need our gradient matrix &lt;span class="math"&gt;\(d\textbf{W}^{[2]}\)&lt;/span&gt; to have dimensions that match &lt;span class="math"&gt;\(\textbf{W}^{[2]}\)&lt;/span&gt;. So we will reshape the Jacobian into a &lt;span class="math"&gt;\((2,4)\)&lt;/span&gt; matrix.&lt;/p&gt;
 &lt;div class="math"&gt;$$d\textbf{W}^{[2]} = 
 \begin{bmatrix}
-\\
 \delta^{[2]}_{11}a^{[2]}_{11} &amp;amp; 
 \dotsc &amp;amp;
 \delta^{[2]}_{11}a^{[2]}_{41} \\\\
@@ -728,12 +711,10 @@ $$&lt;/div&gt;
 &lt;p&gt;And, interestingly, we can break this apart into two matricies.&lt;/p&gt;
 &lt;div class="math"&gt;$$d\textbf{W}^{[2]} = 
 \begin{bmatrix}
-\\
 \delta^{[2]}_{11} \\\\
 \delta^{[2]}_{21} \\\\
 \end{bmatrix}
 \begin{bmatrix}
-\\
 a^{[2]}_{11} &amp;amp; a^{[2]}_{21} &amp;amp;  a^{[2]}_{31} &amp;amp; a^{[2]}_{41} \\\\
 \end{bmatrix}
 $$&lt;/div&gt;
@@ -770,7 +751,6 @@ d\textbf{W}^{[3]}, db^{[3]} \bigg)$$&lt;/div&gt;
 \dfrac{d\textbf{a}^{[1]}}{d{\textbf{z}^{[1]}}}
 \dfrac{\partial{\textbf{z}^{[1]}}}{\partial{\textbf{W}^{[1]}}}
 $$&lt;/div&gt;
-&lt;h3&gt;&lt;/h3&gt;
 &lt;div class="math"&gt;$$
 \dfrac{\partial{J}}{\partial{\textbf{b}^{[1]}}} = 
 \dfrac{d{J}}{d{\textbf{z}^{[2]}}}

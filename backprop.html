@@ -923,16 +923,12 @@ $$</div>
 \dfrac{d{a^{[3]}}}{d{\mathbf{z}^{[2]}}}$$</div>
 <div class="math">$$\dfrac{\partial{J}}{\partial{\mathbf{z}^{[2]}}} = \delta^{[3]}
 \begin{bmatrix}
-\\
-    W^{[3]}_{11} &amp; 
-    W^{[3]}_{12}
-\\\\
+W^{[3]}_{11} &amp; 
+W^{[3]}_{12}
 \end{bmatrix}
 \begin{bmatrix}
-\\
-    g'(z^{[2]}_{11}) &amp; 0 \\\\ 
-    0 &amp; g'(z^{[2]}_{21})
-\\\\
+g'(z^{[2]}_{11}) &amp; 0 \\\\ 
+0 &amp; g'(z^{[2]}_{21})
 \end{bmatrix}
 $$</div>
 <p>So this is the Jacobian Matrix of <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{z}^{[2]}\)</span>. But notice that this matrix is <span class="math">\((1,2)\)</span> but <span class="math">\(\textbf{z}^{[2]}\)</span> is <span class="math">\((2,1)\)</span>. We can define a gradient matrix similar to what we did for the weights and bias parameters that match the dimensions of <span class="math">\(\textbf{z}^{[2]}\)</span> called <span class="math">\(\boldsymbol{\delta}^{[2]}\)</span>:</p>
@@ -942,59 +938,48 @@ $$</div>
 $$</div>
 <p>Recall that given three matricies <span class="math">\(\textbf{A}\)</span>, <span class="math">\(\textbf{B}\)</span>, and <span class="math">\(\textbf{d}\)</span> the <span class="math">\((\textbf{ABC})^T = \textbf{C}^T\textbf{B}^T\textbf{A}^T\)</span></p>
 <div class="math">$$
-\boldsymbol{\delta}^{[2]} = \begin{bmatrix}
-\\
-    g'(z^{[2]}_{11}) &amp; 0 \\\\ 
-    0 &amp; g'(z^{[2]}_{21})
-\\\\
+\boldsymbol{\delta}^{[2]} = 
+\begin{bmatrix}
+g'(z^{[2]}_{11}) &amp; 0 \\\\ 
+0 &amp; g'(z^{[2]}_{21})
 \end{bmatrix}
 \begin{bmatrix}
-\\
-    W^{[3]}_{11} \\\\ 
-    W^{[3]}_{12}
-\\\\
+W^{[3]}_{11} \\\\ 
+W^{[3]}_{12}
 \end{bmatrix}
 \delta^{[3]}
 $$</div>
-<h1>$$</h1>
-<div class="math">\begin{bmatrix}
-\\
-    g'(z^{[2]}_{11})W^{[3]}_{11}\delta^{[3]} \\\\ 
-    g'(z^{[2]}_{21})W^{[3]}_{12}\delta^{[3]}
-\\\\
-\end{bmatrix}</div>
-<p>
-$$</p>
+<div class="math">$$
+\boldsymbol{\delta}^{[2]} = 
+\begin{bmatrix}
+g'(z^{[2]}_{11})W^{[3]}_{11}\delta^{[3]} \\\\ 
+g'(z^{[2]}_{21})W^{[3]}_{12}\delta^{[3]}
+\end{bmatrix}
+$$</div>
 <p>Notice when we rearranged the products in the matrix, we get:</p>
 <div class="math">$$
 \boldsymbol{\delta}^{[2]} = 
 \begin{bmatrix}
-\\
-    W^{[3]}_{11}\delta^{[3]}g'(z^{[2]}_{11}) \\\\ 
-    W^{[3]}_{12}\delta^{[3]}g'(z^{[2]}_{21})
-\\\\
+W^{[3]}_{11}\delta^{[3]}g'(z^{[2]}_{11}) \\\\ 
+W^{[3]}_{12}\delta^{[3]}g'(z^{[2]}_{21})
 \end{bmatrix}
 $$</div>
-<h1>$$</h1>
-<div class="math">\begin{bmatrix}
-\\
-    W^{[3]}_{11}\delta^{[3]} \\\\ 
-    W^{[3]}_{12}\delta^{[3]}
-\\\\
-\end{bmatrix}</div>
-<p>
+<div class="math">$$
+\boldsymbol{\delta}^{[2]} = 
+\begin{bmatrix}
+W^{[3]}_{11}\delta^{[3]} \\\\ 
+W^{[3]}_{12}\delta^{[3]}
+\end{bmatrix}
 *
 g'(\textbf{z}^{[2]})
-$$</p>
+$$</div>
 <p>Where <span class="math">\(*\)</span> indicates elementwise multiplication between two matricies. <span class="math">\(g'(\textbf{z}^{[2]})\)</span> is a columnwise vector of the derivative of ReLU <span class="math">\(g'(z)\)</span> applied to each entry of <span class="math">\(\textbf{z}^{[2]}\)</span>.</p>
 <p>Next, we can decompose the result into:</p>
 <div class="math">$$
 \boldsymbol{\delta}^{[2]}= 
 \begin{bmatrix}
-\\
-    W^{[3]}_{11} \\\\ 
-    W^{[3]}_{12}
-\\\\
+W^{[3]}_{11} \\\\ 
+W^{[3]}_{12}
 \end{bmatrix}
 \delta^{[3]}
 *
@@ -1014,24 +999,24 @@ $$</div>
 \dfrac{\partial{J}}{\partial{\mathbf{z}^{[2]}}}
 \dfrac{\partial{\mathbf{z}^{[2]}}}{\partial{\mathbf{W}^{[2]}}}
 $$</div>
-<p>$$
+<div class="math">$$
 \dfrac{\partial{J}}{\partial{\mathbf{W}^{[2]}}} = 
 \boldsymbol{\delta}^{[2]T}
 \begin{bmatrix}
-a^{[2]}<em 41>{11} &amp;
+a^{[2]}_{11} &amp;
 \dotsc &amp; 
-a^{[2]}</em> &amp;
+a^{[2]}_{41} &amp;
 0 &amp;
 \dotsc &amp;
-0 \\</p>
-<p>0 &amp;
+0 \\\\
+0 &amp;
 \dotsc &amp; 
 0 &amp;
-a^{[2]}<em 41>{11} &amp; 
+a^{[2]}_{11} &amp; 
 \dotsc &amp;
-a^{[2]}</em> &amp; \\
+a^{[2]}_{41} &amp; \\\\
 \end{bmatrix}
-$$</p>
+$$</div>
 <div class="math">$$
  = 
 \begin{bmatrix}
@@ -1054,23 +1039,21 @@ a^{[2]}_{41} &amp; \\\\
 \end{bmatrix}
 $$</div>
 <p>And we get this fun <span class="math">\((1, 8)\)</span> Jacobian matrix:</p>
-<p>$$\dfrac{\partial{J}}{\partial{\textbf{W}^{[2]}}} = 
+<div class="math">$$\dfrac{\partial{J}}{\partial{\textbf{W}^{[2]}}} = 
 \begin{bmatrix}
-\
-\delta^{[2]}<em 11>{11}a^{[2]}</em> &amp; 
-\delta^{[2]}<em 21>{11}a^{[2]}</em> &amp;
-\delta^{[2]}<em 31>{11}a^{[2]}</em> &amp; 
-\delta^{[2]}<em 41>{11}a^{[2]}</em> &amp;</p>
-<p>\delta^{[2]}<em 11>{21}a^{[2]}</em> &amp; 
-\delta^{[2]}<em 21>{21}a^{[2]}</em> &amp;
-\delta^{[2]}<em 31>{21}a^{[2]}</em> &amp; 
-\delta^{[2]}<em 41>{21}a^{[2]}</em> \\
+\delta^{[2]}_{11}a^{[2]}_{11} &amp; 
+\delta^{[2]}_{11}a^{[2]}_{21} &amp;
+\delta^{[2]}_{11}a^{[2]}_{31} &amp; 
+\delta^{[2]}_{11}a^{[2]}_{41} &amp;
+\delta^{[2]}_{21}a^{[2]}_{11} &amp; 
+\delta^{[2]}_{21}a^{[2]}_{21} &amp;
+\delta^{[2]}_{21}a^{[2]}_{31} &amp; 
+\delta^{[2]}_{21}a^{[2]}_{41}
 \end{bmatrix}
-$$</p>
+$$</div>
 <p>So this is our Jacobian. But we need our gradient matrix <span class="math">\(d\textbf{W}^{[2]}\)</span> to have dimensions that match <span class="math">\(\textbf{W}^{[2]}\)</span>. So we will reshape the Jacobian into a <span class="math">\((2,4)\)</span> matrix.</p>
 <div class="math">$$d\textbf{W}^{[2]} = 
 \begin{bmatrix}
-\\
 \delta^{[2]}_{11}a^{[2]}_{11} &amp; 
 \dotsc &amp;
 \delta^{[2]}_{11}a^{[2]}_{41} \\\\
@@ -1082,12 +1065,10 @@ $$</div>
 <p>And, interestingly, we can break this apart into two matricies.</p>
 <div class="math">$$d\textbf{W}^{[2]} = 
 \begin{bmatrix}
-\\
 \delta^{[2]}_{11} \\\\
 \delta^{[2]}_{21} \\\\
 \end{bmatrix}
 \begin{bmatrix}
-\\
 a^{[2]}_{11} &amp; a^{[2]}_{21} &amp;  a^{[2]}_{31} &amp; a^{[2]}_{41} \\\\
 \end{bmatrix}
 $$</div>
@@ -1124,7 +1105,6 @@ d\textbf{W}^{[3]}, db^{[3]} \bigg)$$</div>
 \dfrac{d\textbf{a}^{[1]}}{d{\textbf{z}^{[1]}}}
 \dfrac{\partial{\textbf{z}^{[1]}}}{\partial{\textbf{W}^{[1]}}}
 $$</div>
-<h3></h3>
 <div class="math">$$
 \dfrac{\partial{J}}{\partial{\textbf{b}^{[1]}}} = 
 \dfrac{d{J}}{d{\textbf{z}^{[2]}}}
