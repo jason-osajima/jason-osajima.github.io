@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="author" content="Jason Osajima">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>The Math behind Neural Networks - Backpropagation | Jason {osa-jima}</title>
+
+	<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+	<link rel="icon" href="/favicon.ico" type="image/x-icon">
+        <link rel="alternate" type="application/atom+xml" title="Jason {osa-jima} blog atom feed" href="/feeds/all.atom.xml" />
+        <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700' rel='stylesheet' type='text/css'>
+
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" type="text/css" href="/theme/css/icons.css"/>
+        <style>.highlight .hll { background-color: #ffffcc }
+.highlight .c { color: #60a0b0; font-style: italic } /* Comment */
+.highlight .err { border: 1px solid #FF0000 } /* Error */
+.highlight .k { color: #007020; font-weight: bold } /* Keyword */
+.highlight .o { color: #666666 } /* Operator */
+.highlight .cm { color: #60a0b0; font-style: italic } /* Comment.Multiline */
+.highlight .cp { color: #007020 } /* Comment.Preproc */
+.highlight .c1 { color: #60a0b0; font-style: italic } /* Comment.Single */
+.highlight .cs { color: #60a0b0; background-color: #fff0f0 } /* Comment.Special */
+.highlight .gd { color: #A00000 } /* Generic.Deleted */
+.highlight .ge { font-style: italic } /* Generic.Emph */
+.highlight .gr { color: #FF0000 } /* Generic.Error */
+.highlight .gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.highlight .gi { color: #00A000 } /* Generic.Inserted */
+.highlight .go { color: #808080 } /* Generic.Output */
+.highlight .gp { color: #c65d09; font-weight: bold } /* Generic.Prompt */
+.highlight .gs { font-weight: bold } /* Generic.Strong */
+.highlight .gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.highlight .gt { color: #0040D0 } /* Generic.Traceback */
+.highlight .kc { color: #007020; font-weight: bold } /* Keyword.Constant */
+.highlight .kd { color: #007020; font-weight: bold } /* Keyword.Declaration */
+.highlight .kn { color: #007020; font-weight: bold } /* Keyword.Namespace */
+.highlight .kp { color: #007020 } /* Keyword.Pseudo */
+.highlight .kr { color: #007020; font-weight: bold } /* Keyword.Reserved */
+.highlight .kt { color: #902000 } /* Keyword.Type */
+.highlight .m { color: #40a070 } /* Literal.Number */
+.highlight .s { color: #4070a0 } /* Literal.String */
+.highlight .na { color: #4070a0 } /* Name.Attribute */
+.highlight .nb { color: #007020 } /* Name.Builtin */
+.highlight .nc { color: #0e84b5; font-weight: bold } /* Name.Class */
+.highlight .no { color: #60add5 } /* Name.Constant */
+.highlight .nd { color: #555555; font-weight: bold } /* Name.Decorator */
+.highlight .ni { color: #d55537; font-weight: bold } /* Name.Entity */
+.highlight .ne { color: #007020 } /* Name.Exception */
+.highlight .nf { color: #06287e } /* Name.Function */
+.highlight .nl { color: #002070; font-weight: bold } /* Name.Label */
+.highlight .nn { color: #0e84b5; font-weight: bold } /* Name.Namespace */
+.highlight .nt { color: #062873; font-weight: bold } /* Name.Tag */
+.highlight .nv { color: #bb60d5 } /* Name.Variable */
+.highlight .ow { color: #007020; font-weight: bold } /* Operator.Word */
+.highlight .w { color: #bbbbbb } /* Text.Whitespace */
+.highlight .mf { color: #40a070 } /* Literal.Number.Float */
+.highlight .mh { color: #40a070 } /* Literal.Number.Hex */
+.highlight .mi { color: #40a070 } /* Literal.Number.Integer */
+.highlight .mo { color: #40a070 } /* Literal.Number.Oct */
+.highlight .sb { color: #4070a0 } /* Literal.String.Backtick */
+.highlight .sc { color: #4070a0 } /* Literal.String.Char */
+.highlight .sd { color: #4070a0; font-style: italic } /* Literal.String.Doc */
+.highlight .s2 { color: #4070a0 } /* Literal.String.Double */
+.highlight .se { color: #4070a0; font-weight: bold } /* Literal.String.Escape */
+.highlight .sh { color: #4070a0 } /* Literal.String.Heredoc */
+.highlight .si { color: #70a0d0; font-style: italic } /* Literal.String.Interpol */
+.highlight .sx { color: #c65d09 } /* Literal.String.Other */
+.highlight .sr { color: #235388 } /* Literal.String.Regex */
+.highlight .s1 { color: #4070a0 } /* Literal.String.Single */
+.highlight .ss { color: #517918 } /* Literal.String.Symbol */
+.highlight .bp { color: #007020 } /* Name.Builtin.Pseudo */
+.highlight .vc { color: #bb60d5 } /* Name.Variable.Class */
+.highlight .vg { color: #bb60d5 } /* Name.Variable.Global */
+.highlight .vi { color: #bb60d5 } /* Name.Variable.Instance */
+.highlight .il { color: #40a070 } /* Literal.Number.Integer.Long */</style>
+        <style>body {
+  margin: 0;
+  padding: 0;
+  font: 15px 'Source Sans Pro', sans-serif;
+  line-height: 1.6em;
+  color: #222;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: #007EE5;
+  text-decoration: none;
+}
+a:hover {
+  color: #007EE5;
+  text-decoration: none;
+}
+header.main-header {
+  background: none repeat scroll 0% 0% #205F29;
+  margin-bottom: 0px;
+}
+header.main-header a {
+  color: #fff;
+}
+header.main-header .container {
+  max-width: 1000px;
+}
+header.main-header .container nav a:hover {
+  background-color: #5C881C;
+}
+article {
+  margin: 0;
+}
+article header.about {
+  margin-bottom: 0px;
+  padding-bottom: 0px;
+}
+article header {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+}
+article header h1 {
+  margin-bottom: 2px;
+  font-weight: 700;
+  color: #000;
+}
+article header time {
+  color: #9E9E9E;
+  font-size: 0.85em;
+  float: right;
+}
+article header time.left {
+  color: #9E9E9E;
+  font-size: 0.85em;
+  float: left;
+}
+article div.social-links ul {
+  padding: 0px;
+}
+article div.social-links li {
+  display: inline;
+  font-size: 20px;
+}
+article div.social-links li a {
+  color: #000;
+  padding: 10px;
+}
+article div.social-links li a:hover {
+  color: #666;
+  text-decoration: none;
+}
+article p {
+  font-size: 16px;
+  margin-bottom: 20px;
+  line-height: 1.6em;
+}
+article p.note {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 0.533em 0.733em;
+}
+article p.update {
+  background-color: #FEEFB3;
+  border: 1px solid #e6e68a;
+  padding: 0.533em 0.733em;
+}
+article p.alert {
+  background-color: #ffe2e2;
+  border: 1px solid #ffb2b2;
+  padding: 0.533em 0.733em;
+}
+article ul,
+article ol {
+  margin-top: 0px;
+  margin-bottom: 25px;
+}
+article li {
+  font-size: 16px;
+  line-height: 1.6em;
+}
+article a:hover {
+  text-decoration: underline;
+}
+article blockquote {
+  border-left: 2px solid #c7c7cc;
+  color: #666;
+  margin: 30px 0;
+  padding: 0 0 0 25px;
+}
+article img {
+  max-width: 100%;
+}
+article code {
+  color: #333;
+  background-color: #EEE;
+  border-radius: 0;
+  font-size: 13px;
+}
+article .meta {
+  font-size: 11px;
+}
+article .meta a:hover {
+  text-decoration: none;
+}
+article .meta div {
+  margin-bottom: 20px;
+  display: block;
+}
+article .meta a.tag {
+  margin: 0 10px 10px 0;
+  padding: 1px 12px;
+  display: inline-block;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.05);
+}
+article .meta a.tag:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+article .meta a.read_more,
+article .meta a.comments_btn {
+  font-size: 14px;
+  font-weight: 800;
+  padding: 10px 20px;
+  color: #205F29;
+  background: #FFF;
+  border: 1px solid #205F29;
+}
+article .meta a.read_more:hover,
+article .meta a.comments_btn:hover {
+  color: #FFF;
+  background: #5C881C;
+}
+.index {
+  max-width: 700px;
+}
+.index article header h2 {
+  font-size: 36px;
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+.index article header h2 a {
+  color: #000;
+}
+.index article header h2 a:hover {
+  color: #007EE5;
+  text-decoration: none;
+}
+.index .separator {
+  padding: 40px 0 0 0;
+  margin: 0 0 40px 0;
+  height: 10px;
+  border-bottom: solid 1px #CCC;
+}
+.index .pagination {
+  display: block;
+  margin-bottom: 100px;
+}
+.index .pagination .left {
+  text-align: right;
+}
+.index .pagination .right {
+  text-align: left;
+}
+.index .pagination a {
+  display: inline-block;
+  border: 2px solid #5C881C;
+  margin: 0 5px;
+  padding: 8px 20px;
+  font-weight: bold;
+  color: #5C881C;
+}
+.index .pagination a:hover {
+  color: #FFF;
+  background: #5C881C;
+}
+.post {
+  max-width: 700px;
+}
+.post h2:before {
+  content: "# ";
+  font-weight: bold;
+  color: #DDD;
+}
+.post h3:before {
+  content: "## ";
+  font-weight: bold;
+  color: #DDD;
+}
+.post h4:before {
+  content: "### ";
+  font-weight: bold;
+  color: #DDD;
+}
+.post article .meta {
+  margin: 50px 0 100px;
+}
+.list {
+  max-width: 700px;
+}
+.list ul.double-list {
+  margin: 0 auto 60px;
+  padding: 0;
+  list-style-type: none;
+}
+.list ul.double-list li {
+  padding: 5px 0;
+}
+.list ul.double-list li h2 {
+  font-size: 1em;
+  display: inline;
+  font-weight: normal;
+}
+.list ul.double-list li span {
+  font-family: sans-serif;
+  text-transform: uppercase;
+  text-align: right;
+  float: right;
+  padding-top: 3px;
+  font-size: 12px;
+  color: #999;
+}
+.full-width-content {
+  padding-top: 10px;
+  padding-left: 0px;
+  padding-right: 0px;
+  margin-left: -20px;
+  margin-right: -20px;
+}
+.col-xs-1,
+.col-sm-1,
+.col-md-1,
+.col-lg-1,
+.col-xs-2,
+.col-sm-2,
+.col-md-2,
+.col-lg-2,
+.col-xs-3,
+.col-sm-3,
+.col-md-3,
+.col-lg-3,
+.col-xs-4,
+.col-sm-4,
+.col-md-4,
+.col-lg-4,
+.col-xs-5,
+.col-sm-5,
+.col-md-5,
+.col-lg-5,
+.col-xs-6,
+.col-sm-6,
+.col-md-6,
+.col-lg-6,
+.col-xs-7,
+.col-sm-7,
+.col-md-7,
+.col-lg-7,
+.col-xs-8,
+.col-sm-8,
+.col-md-8,
+.col-lg-8,
+.col-xs-9,
+.col-sm-9,
+.col-md-9,
+.col-lg-9,
+.col-xs-10,
+.col-sm-10,
+.col-md-10,
+.col-lg-10,
+.col-xs-11,
+.col-sm-11,
+.col-md-11,
+.col-lg-11,
+.col-xs-12,
+.col-sm-12,
+.col-md-12,
+.col-lg-12 {
+  padding-right: 0px;
+  padding-left: 0px;
+}</style>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+
+    </head>
+
+    <body>
+        <header class="navbar navbar-inverse bs-docs-nav">
+            <div class="container-fluid">
+                <div class="navbar-header">
+		  <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#theNavbar">
+		    <span class="icon-bar"></span>
+		    <span class="icon-bar"></span>
+		    <span class="icon-bar"></span> 
+		  </button>
+                  <a class="navbar-brand" href="/" title="Home" class="title">Jason {osa-jima}</a>
+                </div>
+                <nav class="collapse navbar-collapse bs-navbar-collapse" role="navigation" id="theNavbar">
+		    <ul class="nav navbar-nav navbar-right">
+                            <li><a href="/pages/about.html" title="About">About</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+
+        <div id="wrap">
+<div class="container post">
+    <article>
+        <header>
+            <h1>The Math behind Neural Networks - Backpropagation</h1>
+            <time datetime="article.date.isoformat()" pubdate>Wed 18 July 2018</time>
+        </header>
+
+        <div class="article_content">
+            <p><em>This is part two in a two-part series on the math behind neural networks. Part two is about backpropagation. Part one is about forward propagation and can be found <a href="/forwardprop">here</a>.</em></p>
+<h2>Introduction</h2>
+
+
+<p>The hardest part about deep learning for me was backpropagation. Forward propagation made sense; basically you do a bunch of matrix multiplications, add some bias terms, and throw in non-linearities so it doesn't turn into one large matrix multiplication. Gradient descent also intuitively made sense to me as well; we want to use the partial derivatives of our parameters with respect to our cost function (<span class="math">\(J\)</span>) to update our parameters in order to minimize <span class="math">\(J\)</span>. </p>
+<p>The objective of backpropagation is pretty clear: we need to calculate the partial derivatives of our parameters with respect to cost function (<span class="math">\(J\)</span>) in order to use it for gradient descent. The difficult part lies in keeping track of the calculations, since each partial derivative of parameters in each layer rely on inputs from the previous layer. Maybe it's also the fact that we are going backwards makes it hard for my brain to wrap my head around it.</p>
+
+
+<p>&nbsp;</p>
+<h2>Motivation</h2>
+<p>Why do we need to learn the math behind backpropagation? Today we have great deep learning frameworks like Tensorflow and PyTorch that do backpropagation automatically, so why do we need to know how it works under the hood?</p>
+<p>Josh Waitzkin is an internationally-recognized chess player (and the movie and book "Searching for Bobby Fischer" were both based on his career) and world champion in Tai Chi Chuan. </p>
+<p>Most kids start their chess career by learning opening variations of the game. Kids learn strong opening positions in order to gain a decisive advantage in the beginning of a match. This advantage proves too much for most of their opponents and they end up winning. </p>
+<p>Josh Waitzkin's teacher did not focus on opening variations. Instead, he focused on end game scenarios, such as King v. King or King v. King Pawn. These end game scenarios were simple enough for Josh to develop an intuitive understanding of how pieces interact with one another. </p>
+<p>Kids that learn opening variations couldn't internalize these first principles about the interactions between pieces because there was too much stuff going on. </p>
+<blockquote>
+<p>A critical challenge for all practical martial artists is to make their diverse techniques take on the efficiency of the jab. When I watched William Chen spar, he was incredibly understated and exuded shocking power. While some are content to call such abilities chi and stand in awe, I wanted to to understand what was going on. The next phase of my martial growth would involve turning the large into the small. My understanding of this process, in the spirit of my numbers to leave numbers method of chess study, is to touch the essence (for example, highly refined and deeply internalized body mechanics or feeling) of a technique, and then to incrementally condense the external manifestation of the tecnhique while keeping true to its essence. Over time expanding decreases while potency increases. I call this method 'making smaller circles'.</p>
+</blockquote>
+<p>I think there are several ways that we can interpret this quote. For someone who is a machine learning practitioner, it may be good to take a model that you have a pretty good understanding of and try and simplify it to try to understand everything at its most basic level.</p>
+<p>The best resource for me to learn backpropagation has been Andrew Ng's [Deep Learning Specialization in Coursera]((https://www.coursera.org/specializations/deep-learning). He is always very clear about understanding the intutition behind the problem, defining the problem and then laying out the mathematical notation. In this blog post I will rely heavily on the notation and concepts used in his course.</p>
+<p>Let's make smaller circles.</p>
+<p>Backpropagation can be used in different ways, but for our purposes we will use it to train a binary classifier. In my <a href="/forwardprop">previous post</a> on forward propagation, I layout the architecture for a 3 layer Neural Network, which we will rely on for this example.</p>
+<p>Backpropagation starts with our loss function, so we will introduce this idea first. But before we get into the math, let's define what notation we will use through the course of this blog post.</p>
+<p>&nbsp;</p>
+<h2>Some Notation</h2>
+<p>For this blog post, any time we define a vector or matrix, we will bold it. Anytime we define a scalar, we will keep it normal. In the previous blog post on forward propagation, we introduced a 3-layer neural network architecture:</p>
+<p><img src="/images/nn_3.png" title="[nn_3]" alt="[nn_3]"></p>
+<p>So for example, <span class="math">\(\textbf{a}^{(i)[1]}\)</span> is a vector and is therefore bolded. The third entry for <span class="math">\(\textbf{a}^{(i)[1]}\)</span> is <span class="math">\(a^{(i)[1]}_{31}\)</span>. Since it is a scalar, it is not bolded. </p>
+<p>You may have noticed that <span class="math">\(a^{(i)[3]}\)</span> and <span class="math">\(\hat{y}^{(i)}\)</span> are not bolded. That's because they are scalars <span class="math">\(a^{(i)[3]} = \hat{y}^{(i)} \in (0, 1)\)</span>, and represent the probability that we think the <span class="math">\(ith\)</span> example belongs to the positive class, <span class="math">\(y = 1\)</span>. More on this later.</p>
+<p>The <span class="math">\(i\)</span> denotes that <span class="math">\(\textbf{a}^{(i)[1]}\)</span> is the activation in the <span class="math">\(L = 1\)</span> layer for the <span class="math">\(ith\)</span> example. For simplicity, we will get rid of the <span class="math">\((i)\)</span> notation and assume that we are working with the <span class="math">\(ith\)</span> training example. Our architecture therefore becomes:</p>
+<p><img src="/images/nn_simplified.png" title="[nn_simplified]" alt="[nn_simplified]"></p>
+<p>Lovely, that looks much simpler. You might be wondering why we decided to define all of our vectors as column vectors instead of row vectors. If a vector has <span class="math">\(m\)</span> entries, a column vector is defined to be a <span class="math">\((m,1)\)</span> dimensional matrix and a row vector is a <span class="math">\((1, m)\)</span> dimensional matrix.</p>
+<p>Some people use row vectors and others use column vectors. Most of the resources I used to write this blog post use column vectors to define the activations for each layer, so that's what we will roll with.</p>
+<p>When we define a column vector for the outputs from different layers, we will bold it and use a lowercase letter to represent it. When we define a weight matrix, we will bold it and use an uppercase letter to define it. So for example, the weight matrix we use to transition from the 2nd layer (1st hidden layer) to the 3rd layer (2nd hidden layer) would be <span class="math">\(\textbf{W}^{[2]}\)</span> with dimensions <span class="math">\((2, 4)\)</span> that match the 1st dimension of the layer it's transitioning to (2) and the 1st dimension of the layer it comes from (4). Each entry is a scalar, and therefore is not bolded.</p>
+<div class="math">$$\textbf{W}^{[2]} = 
+\begin{bmatrix}
+    W^{[2]}_{11} &amp; W^{[2]}_{12} &amp; W^{[2]}_{13} &amp; W^{[2]}_{14} \\\\
+    W^{[2]}_{21} &amp; W^{[2]}_{22} &amp; W^{[2]}_{23} &amp; W^{[2]}_{24} \\
+\end{bmatrix}$$</div>
+<p>&nbsp;</p>
+<h2>Understanding the Loss Function</h2>
+<p>In the previous post we used forward propagation to go from an input vector for the <span class="math">\(ith\)</span> training example <span class="math">\(\textbf{x}\)</span> to <span class="math">\(\hat{y}\)</span>. Recall that <span class="math">\(\hat{y}\)</span> is our best guess for the class <span class="math">\(\textbf{x}\)</span> belongs to. In our example, <span class="math">\(\textbf{x}\)</span> could belong to either happy (<span class="math">\(0\)</span>) or sad (<span class="math">\(1\)</span>).  <span class="math">\(y\)</span> is the class (either 0 or 1) that <span class="math">\(\textbf{x}\)</span> actually belongs to. So how can we measure how well our model is doing, i.e. how can we measure how close the prediction <span class="math">\(\hat{y}\)</span> is to the actual <span class="math">\(y\)</span>?</p>
+<p>In order to measure the error between these two values, we use what's called a loss function. When I was introduced to the concept of a loss function, I immediately thought we should use this one:</p>
+<div class="math">$$\mathcal{L}(\hat{y}, y) = \dfrac{1}{2}(\hat{y} - y)^2$$</div>
+<p>This is a pretty simple loss function: just subtract the actual from the predicted, square it so it isn't negative, and then divide it by 2 (so the derivative looks prettier). It turns out that people don't use this loss function in logistic regression because when you try to learn the parameters the optimization problem is non-convex.</p>
+<p>A better loss function to use is this:
+</p>
+<div class="math">$$\mathcal{L}(\hat{y}, y) = -ylog(\hat{y}) - (1-y)log(1 -\hat{y})$$</div>
+<p>There are several choices for what we can use for our loss function. Let's spend some time to understand how we use this loss function. </p>
+<blockquote>
+<p>One thing that I didn't get when I first started working on this: In high school math if you had for example <span class="math">\(log \ 2\)</span>, this was shorthand for log base 10, or <span class="math">\(log_{10} \ 2\)</span>. However, you'll find that most people that work on stats and computer science problems actually use <span class="math">\(log \ 2\)</span> to mean <span class="math">\(ln \ 2\)</span>. So in this blog post, whenever I use <span class="math">\(log\)</span>, I mean <span class="math">\(ln\)</span>.</p>
+</blockquote>
+<p>Our objective is to try to get <span class="math">\(\mathcal{L}\)</span> to be as low as possible, since <span class="math">\(\mathcal{L}\)</span> represents the error between our prediction <span class="math">\(\hat{y}\)</span> and the actual <span class="math">\(y\)</span>. Notice that when <span class="math">\(y = 1\)</span>, our equation turns into this:</p>
+<div class="math">$$\mathcal{L}(\hat{y},  y = 1) = -1log(\hat{y}) - (1-1)log(1 - \hat{y})$$</div>
+<div class="math">$$\mathcal{L}(\hat{y},  y = 1) = -1log(\hat{y})$$</div>
+<p>So to minimize <span class="math">\(\mathcal{L}\)</span> we want <span class="math">\(\hat{y}\)</span> to be as large as possible, which makes sense since in the final layer we put each entry <span class="math">\(z^{[3]}_{1j}\)</span> in the activity <span class="math">\(\mathbf{z}^{[3]}\)</span> through the sigmoid function, like <span class="math">\(\sigma(\mathbf{z}^{[3]})\)</span>. The range of the sigmoid function is <span class="math">\((0, 1)\)</span>, so the greatest value that <span class="math">\(\hat{y}\)</span> can take is a number super close to 1. Conversely, when <span class="math">\(y = 0\)</span>, our equation turns into this:</p>
+<div class="math">$$\mathcal{L}(\hat{y},  y = 0) = -0log(\hat{y}) - (1-0)log(1 - \hat{y})$$</div>
+<div class="math">$$\mathcal{L}(\hat{y},  y = 0) = -1log(1 - \hat{y})$$</div>
+<p>In this case, in order to minimize <span class="math">\(\mathcal{L}\)</span>, we want <span class="math">\(\hat{y}\)</span> to be close to 0 as possible.</p>
+<p>This seems like it works, but where does this loss function come from? I'm glad you asked, it's kind of fun to figure out how it works.</p>
+<p>So in the previous post we talked about how <span class="math">\(\hat{y}\)</span> is the probability that the example <span class="math">\(\mathbf{x}\)</span> is from either the class 1, or <span class="math">\(y = 1\)</span>. And also keep in mind that all of these technically should have a superscript <span class="math">\((i)\)</span> attached to them. So more formally, <span class="math">\(\hat{y} = P(y = 1 | \mathbf{x})\)</span>.</p>
+<p>We can think of <span class="math">\(y\)</span> as a Bernoulli random variable that can take on 1 with probability <span class="math">\(\hat{y}\)</span> and 0 with probability <span class="math">\(1 - \hat{y}\)</span>. </p>
+<p>The probability mass function for a Bernoulli random variable looks like this:</p>
+<div class="math">$$p(k | p) = k^p(1-k)^{(1-p)}$$</div>
+<p>Which tells you the probability that <span class="math">\(k\)</span> is equal to a particular value. We want to calculate the probability that <span class="math">\(y\)</span> takes on a particular value so, thinking about our example, we get:</p>
+<div class="math">$$p(y | \hat{y}, \mathbf{x}) = y^{\hat{y}}(1-y)^{(1-\hat{y})}$$</div>
+<p>We want to maximize <span class="math">\(p\)</span>, or maximize the probability that given our training example feature vector <span class="math">\(\mathbf{x}\)</span> and prediction outputted from our neural network <span class="math">\(\hat{y}\)</span>, we get the value <span class="math">\(y\)</span>.</p>
+<p>Ok so hopefully that makes sense so far. Why can't we just use this as our loss function, since the function shows how close how our prediction (<span class="math">\(\hat{y}\)</span>) is to our actual (<span class="math">\(y\)</span>)? The reason is in backpropagation we need to take the derivative of our loss function, and it gets a little messy to take the derivative of this function.</p>
+<p>But notice that if we take the log of both sides, our objective stays the same. Instead of maximizing <span class="math">\(p\)</span>, we still just need to maximize the <span class="math">\(log\)</span> of <span class="math">\(p\)</span>, since the <span class="math">\(log\)</span> function increases monotonically. If we take the <span class="math">\(log\)</span> of both sides, and do a little math, we get:</p>
+<div class="math">$$log \ p(y | \hat{y}, \mathbf{x}) = log \ (y^{\hat{y}}(1-y)^{(1-\hat{y})})$$</div>
+<div class="math">$$log \ p(y | \hat{y}, \mathbf{x}) = \hat{y}log \ y + (1-\hat{y})log \ (1-y)$$</div>
+<p>Notice that the left side just becomes <span class="math">\(-\mathcal{L}(\hat{y}, y)\)</span>.</p>
+<div class="math">$$log \ p(y | \hat{y}, x) = -\mathcal{L}(\hat{y}, y)$$</div>
+<div class="math">$$\mathcal{L}(\hat{y}, y) = -log \ p(y | \hat{y}, x)$$</div>
+<p>So when we say we want to minimize <span class="math">\(\mathcal{L}\)</span>, we really mean we want to maximize the probability that <span class="math">\(y\)</span> is equal to it's value given our prediction <span class="math">\(\hat{y}\)</span> and feature vector <span class="math">\(x\)</span>. </p>
+<p>So we figured out what <span class="math">\(\mathcal{L}\)</span> is equal to, which represents our loss for one training example <span class="math">\(i\)</span>. We could just use the gradients of <span class="math">\(\mathcal{L}\)</span> with respect to each scalar entry in each of our parameters. We then could use those gradients to update the values of our parameters in gradient descent. In that case, our loss function <span class="math">\(\mathcal{L}\)</span> would be the same as our cost function <span class="math">\(J\)</span> or:</p>
+<div class="math">$$ J = \mathcal{L}(\hat{y},y) $$</div>
+<p>In this case, we call our optimization algorithm stochastic gradient descent. We could also take a batch of training examples, say <span class="math">\(m\)</span> training examples and define our cost function <span class="math">\(J\)</span> to be the average of the loss <span class="math">\(\mathcal{L}(\hat{y}^{(i)},y^{(i)})\)</span> for <span class="math">\(m\)</span> training examples, or:</p>
+<div class="math">$$J = \dfrac{1}{m}\sum^m_{i = 1} \mathcal{L(\hat{y}^{(i)},y^{(i)})}$$</div>
+<p>If <span class="math">\(m\)</span> is equal to the number of training examples we have access to, we usually call our optimization algorithm batch gradient descent. If <span class="math">\(m\)</span> is less than the number of training examples, we call it mini-batch gradient descent.</p>
+<p>For simplicity, in this blog post we will focus on stochastic gradient descent, so our cost function <span class="math">\(J\)</span> is:</p>
+<div class="math">$$ J = \mathcal{L}(\hat{y},y) $$</div>
+<p>Great, so now we have defined <span class="math">\(J\)</span> and we want to minimize it. How do we do that? Most people use gradient descent, which requires us to calculate the gradient for <span class="math">\(J\)</span> with respect to the parameters that we can change. Calculating these gradients is the objective of backpropagation.</p>
+<p>&nbsp;</p>
+<h2>Introducting Backpropagation</h2>
+<p>In backpropagation, our objective is to calculate the gradients of <span class="math">\(\mathcal{L}\)</span> with respect to what we can change in our neural network. In our three layer network, we can change the value of our parameters. Recall that the architecture of our network looked like this:</p>
+<p><img src="/images/nn_3.png" title="[nn_3]" alt="[nn_3]"></p>
+<p>We can think of the nodes from the two layers connecting the input to the output layer as the intermediate products of the model.</p>
+<p>Notice that this diagram doesn't include any of the parameters of our model. The parameters are the weights (<span class="math">\(\textbf{W}^{[j]}\)</span>) and biases (<span class="math">\(\textbf{b}^{[j]}\)</span>) associated with the j-th layer. Because in order to go from one layer to the next, we multiply the nodes from the previous layer by the weights, add a bias, and send it through an activation function.</p>
+<p>We can think of the lines that connect the nodes of each layer to represent these transformations. In the diagram, there are three sets of lines connecting the four layers, and unsurprisingly there are three sets of weights and biases to go along with them:</p>
+<div class="math">$$(\textbf{W}^{[1]}, \textbf{b}^{[1]}, \textbf{W}^{[2]}, \textbf{b}^{[2]}, \textbf{W}^{[3]}, b^{[3]})$$</div>
+<p>Let's understand the dimensions of each of these parameters. In the previous post, we talked about how the dimensions of the weights that connect layers are equal to the number of entries in those layers, represented by column vectors. So for example, <span class="math">\(\textbf{W}^{[1]}\)</span> connects <span class="math">\(\textbf{x}\)</span> a column vector with 3 entries to <span class="math">\(\textbf{z}^{[1]}\)</span>, a column vector with 3 entires. So the dimensions of <span class="math">\(\textbf{W}^{[1]}\)</span> will be <span class="math">\((4, 3)\)</span>. Similarly, the dimensions of <span class="math">\(\textbf{W}^{[2]}\)</span> will be <span class="math">\((2, 4)\)</span> and the dimensions of <span class="math">\(\textbf{W}^{[3]}\)</span> will be <span class="math">\((1, 2)\)</span>.</p>
+<p>Biases are simpler, since they match the dimensions of the layer that we are headed towards. So for example, <span class="math">\(\textbf{b}^{[1]}\)</span> is <span class="math">\((4, 1)\)</span>, <span class="math">\(\textbf{b}^{[2]}\)</span> is <span class="math">\((2, 1)\)</span>, and <span class="math">\(b^{[3]}\)</span> is a scalar value.</p>
+<p>&nbsp;</p>
+<h3>Gradients for Activation Functions?</h3>
+<p>Do we need to worry about parameters in the activation functions we use? Let's first recall the activation functions that we are using in our example. We use a ReLU function <span class="math">\(g()\)</span> to go from the input layer <span class="math">\(\textbf{x}\)</span> to the first hidden layer <span class="math">\(\textbf{a}^{[1]}\)</span>, a ReLU function <span class="math">\(g()\)</span> to go from the first hidden layer <span class="math">\(\textbf{a}^{[1]}\)</span> to the second hidden layer <span class="math">\(\textbf{a}^{[2]}\)</span>.</p>
+<div class="math">$$
+g(z) = \begin{cases}
+   x &amp;\text{if } z &gt; 0  \\
+   0 &amp;\text{otherwise}
+\end{cases}
+$$</div>
+<p>Where <span class="math">\(z\)</span> is a scalar value.</p>
+<p>Notice that the ReLU function doesn't include any parameters that we would need to optimize in our model.</p>
+<p>We use a sigmoid function <span class="math">\(\sigma()\)</span> to go from the second hidden layer <span class="math">\(\textbf{a}^{[2]}\)</span> to the final output layer <span class="math">\(\hat{y}\)</span>. </p>
+<div class="math">$$
+\sigma(z) = \dfrac{1}{1+e^{-z}}
+$$</div>
+<p>Same as the ReLU function, there are no parameters that we need to optimize in this function.</p>
+<p>So we talked about how in backpropagation we calculate the gradient with respect to each of the parameters that we are interested in optimizing. The gradient is just the partial derivative with respect to each parameter. So for example, the gradient of the cost function (<span class="math">\(J\)</span>) with respect to the weight that connects the third node in the input layer to the second node in the first hidden layer will be:</p>
+<div class="math">$$\dfrac{\partial{J}}{\partial{W^{[1]}_{23}}}$$</div>
+<p>Each time we do backpropagation, we need to not only calculate this gradient, but the gradients for all of our parameters. How many gradients do we need to calculate? If we multiply the dimensions for each of our weights <span class="math">\((12 + 8 + 2 = 22)\)</span> and biases <span class="math">\((4+2+1 = 7)\)</span>, we get 22 + 7 = 29 parameters and therefore 29 gradients (like the one above).</p>
+<p>&nbsp;</p>
+<h4>Vectorizing the Gradients</h4>
+<p>In the same way we combined the feature vectors <span class="math">\(\textbf{x}\)</span> with dimensions <span class="math">\((3,1)\)</span> of <span class="math">\(m\)</span> training examples into a matrix <span class="math">\(X\)</span> with dimensions <span class="math">\((3, m)\)</span>, we can take our 29 gradients and combine them into gradient matricies to make our notation a little easier to follow. For example, we could represent the gradient of the cost function (<span class="math">\(J\)</span>) with respect to <span class="math">\(\textbf{W}^{[2]}\)</span> as just a matrix of the partial derivatives of <span class="math">\(J\)</span> with respect to each entry <span class="math">\(W^{[2]}_{ij}\)</span> like so:</p>
+<div class="math">$$d\textbf{W}^{[2]} = 
+\begin{bmatrix}
+    \dfrac{\partial{J}}{\partial{W^{[2]}_{11}}} &amp; 
+    \dfrac{\partial{J}}{\partial{W^{[2]}_{12}}} &amp;
+    \dfrac{\partial{J}}{\partial{W^{[2]}_{13}}} &amp;
+    \dfrac{\partial{J}}{\partial{W^{[2]}_{14}}} \\\\
+    \dfrac{\partial{J}}{\partial{W^{[2]}_{21}}} &amp;
+    \dfrac{\partial{J}}{\partial{W^{[2]}_{22}}} &amp;
+    \dfrac{\partial{J}}{\partial{W^{[2]}_{23}}} &amp;
+    \dfrac{\partial{J}}{\partial{W^{[2]}_{24}}} \\
+\end{bmatrix}$$</div>
+<p>Notice that the dimensions of the matrix <span class="math">\(d\textbf{W}^{[2]}\)</span> match <span class="math">\(\textbf{W}^{[2]}\)</span>, which makes the gradient update a very simple elementwise operation.</p>
+<p>So why isn't that matrix of partial derivatives equal to:</p>
+<div class="math">$$\dfrac{\partial{J}}{\partial{\textbf{W}^{[2]}}}$$</div>
+<p>There are tons of resources online that treat these two things as the same thing. In fact, it wasn't until I took Andrew Ng's Deep Learning Specialization on Coursera that I was introduced to the notation <span class="math">\(d\textbf{W}^{[2]}\)</span>. The problem is that for simple examples, they are equal to each other, but for more complex examples they won't be equal to each other. We will think of them as separate, and the partial derivative of <span class="math">\(J\)</span> with respect to  <span class="math">\(\textbf{W}^{[2]}\)</span> we can sometimes use as an intermediate calculation to arrive at <span class="math">\(d\textbf{W}^{[2]}\)</span>.</p>
+<p>We started with 29 gradients, and we can now collapse those gradients into 6 gradient matricies:</p>
+<div class="math">$$\bigg( d\textbf{W}^{[1]}, d\textbf{b}^{[1]}, d\textbf{W}^{[2]}, d\textbf{b}^{[2]}, 
+d\textbf{W}^{[3]}, db^{[3]} \bigg)$$</div>
+<p>Keep in mind that each of these gradient matricies should match the dimensions of the parameter they correspond to.</p>
+<p>Next, let's talk about how we implement backpropagation to calculate these gradient matricies.</p>
+<p>&nbsp;</p>
+<h2>Implementing Backpropagation</h2>
+<p>In forward propagation, given a feature vector <span class="math">\(\textbf{x}\)</span> for the <span class="math">\(ith\)</span> example, our goal was to calculate one output, <span class="math">\(\hat{y}\)</span> which is our best guess for what class the example <span class="math">\(i\)</span> belongs to.</p>
+<p>In backpropagation, for our 3 layer neural network example our goal is to calculate the 6 gradient matricies.</p>
+<p>We do this (unsurprisingly) by working backwards. So we will start by calculating:</p>
+<div class="math">$$d\textbf{W}^{[3]}, db^{[3]}$$</div>
+<p>What are the equations that connect our cost function <span class="math">\(J\)</span> to our weights and biases <span class="math">\(\textbf{W}^{[3]}, b^{[3]}\)</span> ? We are going to use <span class="math">\(a^{[3]}\)</span> instead of <span class="math">\(\hat{y}\)</span>, but if it tickles your fancy you can feel free to use <span class="math">\(\hat{y}\)</span>.</p>
+<div class="math">$$z^{[3]} = \textbf{W}^{[3]}a^{[2]} + b^{[3]}$$</div>
+<div class="math">$$a^{[3]} = \sigma(z^{[3]})$$</div>
+<div class="math">$$J(a^{[3]}, y) = -ylog(a^{[3]}) - (1-y)log(1 -a^{[3]})$$</div>
+<p>So using the chain rule from calculus, we can think of <span class="math">\(J\)</span> as the composition of two other functions, <span class="math">\(z^{[3]}\)</span> and <span class="math">\(a^{[3]}\)</span> and thefore write the two gradient matricies as:</p>
+<div class="math">$$\dfrac{\partial{J}}{\partial{\textbf{W}^{[3]}}} = 
+\dfrac{d{J}}{d{a^{[3]}}}
+\dfrac{d{a^{[3]}}}{d{z^{[3]}}}
+\dfrac{\partial{z^{[3]}}}{\partial{\textbf{W}^{[3]}}}$$</div>
+<div class="math">$$\dfrac{\partial{J}}{\partial{b^{[3]}}} =
+\dfrac{d{J}}{d{a^{[3]}}}
+\dfrac{d{a^{[3]}}}{d{z^{[3]}}}
+\dfrac{\partial{z^{[3]}}}{\partial{b^{[3]}}}$$</div>
+<p>Before moving on, notice that the first equation calculates the partial derivative of <span class="math">\(J\)</span> (a scalar value) with respect to <span class="math">\(\textbf{W}^{[3]}\)</span>, which is a row vector with dimensions <span class="math">\((1,2)\)</span>. So we are definitely going down the dark path of calculating vector and matrix derivatives. </p>
+<p>If you threw up in a little bit in your mouth at the prospect of taking a derivative with respect to a row vector, I found these <a href="https://web.stanford.edu/class/cs224n/readings/gradient-notes.pdf">two</a> <a href="http://cs231n.stanford.edu/vecDerivs.pdf">resources</a> helpful to understand the math a bit better.</p>
+<p>Ok great, so now let's figure out what these 2 derivatives and 2 partial derivatives are equal to, so we can ultimately calculate the gradient of <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{W}^{[3]}\)</span> and <span class="math">\(b^{[3]}\)</span>.</p>
+<p>So why do some of the derivatives use <span class="math">\(d\)</span> and others use <span class="math">\(\partial\)</span>? The simplest answer is that the ones that have a <span class="math">\(d\)</span> only depend on one variable, whereas the ones that use <span class="math">\(\partial\)</span> rely on more than one variable. So for example, when we think of the derivative of <span class="math">\(\mathcal{L}\)</span> with respect to <span class="math">\(a^{[3]}\)</span>, we think of this equation:</p>
+<div class="math">$$J(a^{[3]} | y) = -ylog(a^{[3]}) - (1-y)log(1 -a^{[3]})$$</div>
+<p>Which only uses one variable, <span class="math">\(a^{[3]}\)</span>. Recall that <span class="math">\(y\)</span> is constant, since that is the label for the class that the training example <span class="math">\(i\)</span> belongs to. Since we only consider one variable, we use <span class="math">\(d\)</span>.</p>
+<p>But remember that <span class="math">\(\mathcal{L}\)</span> is a composition of two other functions, <span class="math">\(z^{[3]}\)</span> and <span class="math">\(a^{[3]}\)</span>. So technically if we wrote everything out we would get:</p>
+<div class="math">$$J(\textbf{W}^{[3]}, b^{[3]} \ | \ y) = -ylog(\sigma(\textbf{W}^{[3]}a^{[2]} + b^{[3]})) - (1-y)log(1 - \sigma(\textbf{W}^{[3]}a^{[2]} + b^{[3]}))$$</div>
+<p>Because we are now working with two variables, <span class="math">\(\textbf{W}^{[3]}\)</span> and <span class="math">\(\textbf{W}^{[3]}\)</span>, we use <span class="math">\(\partial\)</span> to represent their derivatives instead of <span class="math">\(d\)</span>.</p>
+<p>I'm sure you can appreciate how I and I imagine a lot of other people get lost in the complexity of backpropagation. To calculate the first gradient matricies for a very simple network, we are already having to calculate 4 other gradients. My hope is that by going through this simple, 3-layer example you can scale to more complex models much easier than if you hand-waved your way through backpropagation. </p>
+<p>Let's start by calculating the derivative of <span class="math">\(J\)</span> with respect to <span class="math">\(a^{[3]}\)</span>.</p>
+<div class="math">$$J(a^{[3]}, y) = -ylog(a^{[3]}) - (1-y)log(1 -a^{[3]})$$</div>
+<p>We can take the derivative of both sides with respect to <span class="math">\(a^{[3]}\)</span> and end up with:</p>
+<div class="math">$$\dfrac{dJ}{d{a^{[3]}}} = \dfrac{-y}{a^{[3]}} - \dfrac{(1-y)}{1-a^{[3]}}(-1) $$</div>
+<div class="math">$$\dfrac{dJ}{d{a^{[3]}}} = \dfrac{-y}{a^{[3]}} + \dfrac{(1-y)}{1-a^{[3]}} $$</div>
+<p>Let's do the same for the derivative of <span class="math">\(a^{[3]}\)</span> with respect to <span class="math">\(z^{[3]}\)</span>:</p>
+<div class="math">$$a^{[3]} = \sigma(z^{[3]})$$</div>
+<div class="math">$$a^{[3]} = \dfrac{1}{1+e^{-z^{[3]}}}$$</div>
+<div class="math">$$a^{[3]} = (1+e^{-z^{[3]}})^{-1}$$</div>
+<div class="math">$$\dfrac{d{a^{[3]}}}{d{z^{[3]}}} = -(1+e^{-z^{[3]}})^{-2}(e^{-z^{[3]}})(-1)$$</div>
+<div class="math">$$\dfrac{d{a^{[3]}}}{d{z^{[3]}}} = \dfrac{e^{-z^{[3]}}}{(1+e^{-z^{[3]}})^2}$$</div>
+<div class="math">$$\dfrac{d{a^{[3]}}}{d{z^{[3]}}} = \dfrac{1}{1+e^{-z^{[3]}}}\dfrac{1}{1+e^{-z^{[3]}}}(e^{-z^{[3]}})$$</div>
+<p>Note that:</p>
+<div class="math">$$a^{[3]} = \dfrac{1}{1+e^{-z^{[3]}}}$$</div>
+<div class="math">$$1+e^{-z^{[3]}} = \dfrac{1}{a^{[3]}}$$</div>
+<div class="math">$$e^{-z^{[3]}} = \dfrac{1-a^{[3]}}{a^{[3]}}$$</div>
+<p>So back to the derivative, we can substitue things in and get:</p>
+<div class="math">$$\dfrac{d{a^{[3]}}}{d{z^{[3]}}} = (a^{[3]})^2\bigg(\dfrac{1-a^{[3]}}{a^{[3]}}\bigg)$$</div>
+<div class="math">$$\dfrac{d{a^{[3]}}}{d{z^{[3]}}} = a^{[3]}(1-a^{[3]})$$</div>
+<p>Finally, we need to calculate the partial derivatives of <span class="math">\(z^{[3]}\)</span> with respect to <span class="math">\(\textbf{W}^{[3]}\)</span> and <span class="math">\(b^{[3]}\)</span>. Up to this point, we've been calculating the deriviatives of scalars, and this is the first time we will calculate a gradient matrix. So the first gradient matrix we need to solve for is this guy:</p>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{\textbf{W}^{[3]}}} = 
+\begin{bmatrix}
+    \dfrac{\partial{z^{[3]}}}{\partial{W^{[3]}_{11}}} &amp; \dfrac{\partial{z^{[3]}}}{\partial{W^{[3]}_{12}}}
+\end{bmatrix}$$</div>
+<p>We call this matrix of partial derivatives a Jacobian matrix. What is a Jacobian Matrix? Let's spend a little bit of time deconstructing that.</p>
+<p>&nbsp;</p>
+<h4>A simple Jacobian Matrix Explanation</h4>
+<p>Let's say we have a function <span class="math">\(\mathcal{f}: \mathbb{R}^m \rightarrow \mathbb{R}^n\)</span> that maps either a column or row vector with <span class="math">\(m\)</span> entries to one that has <span class="math">\(n\)</span> entries. Let's make the first vector a column vector called <span class="math">\(\textbf{x}\)</span> with <span class="math">\(m\)</span> entries.</p>
+<div class="math">$$f(\textbf{x}) = 
+\begin{bmatrix}
+    \\
+    f_1(x_{11}, x_{21}, \dotsc, x_{m1}) \\\\
+    f_2(x_{11}, x_{21}, \dotsc, x_{m1}) \\\\
+    \vdots \\\\
+    f_n((x_{11}, x_{21}, \dotsc, x_{m1})) \\\\
+\end{bmatrix}$$</div>
+<p>So <span class="math">\(f(\textbf{x})\)</span> is a (m, 1) column vector. It could also be a row vector, depending on how you define it.</p>
+<p>So then, the Jacobian Matrix of <span class="math">\(f\)</span> with respect to <span class="math">\(\textbf{x}\)</span> is defined to be: </p>
+<div class="math">$$ \dfrac{\partial\mathcal{f}}{\partial \mathbf{x}} = 
+\begin{bmatrix}
+\\
+\dfrac{\partial\mathcal{f_1}}{\partial x_{11}} &amp;
+\dotsc &amp;
+\dfrac{\partial\mathcal{f_1}}{\partial x_{m1}} \\\\
+\vdots &amp; \ddots &amp; \vdots \\\\
+\dfrac{\partial\mathcal{f_n}}{\partial x_{11}} &amp;
+\dotsc &amp;
+\dfrac{\partial\mathcal{f_n}}{\partial x_{m1}} \\\\
+\end{bmatrix}
+$$</div>
+<p>Notice that the matrix has dimensions <span class="math">\((n, m)\)</span>. It gets its first dimension from the number of entries in the input vector <span class="math">\(\textbf{x}\)</span> and its second dimensions from the number of entries in the output vector <span class="math">\(\mathcal{f}(\textbf{x})\)</span>, regardless of whether those vectors are column or row vectors. So actually, if <span class="math">\(\textbf{x}\)</span> was a row vector, we would get:</p>
+<div class="math">$$ \dfrac{\partial\mathcal{f}}{\partial\mathbf{x}} = 
+\begin{bmatrix}
+\\
+\dfrac{\partial\mathcal{f_1}}{\partial x_{11}} &amp;
+\dotsc &amp;
+\dfrac{\partial\mathcal{f_1}}{\partial x_{1m}} \\\\
+\vdots &amp; \ddots &amp; \vdots \\\\
+\dfrac{\partial\mathcal{f_n}}{\partial x_{11}} &amp;
+\dotsc &amp;
+\dfrac{\partial\mathcal{f_n}}{\partial x_{1m}} \\\\
+\end{bmatrix}
+$$</div>
+<p>See the slight difference? This kind of tripped me out when I first started thinking about it.</p>
+<p>&nbsp;</p>
+<h4>Back to the Gradients</h4>
+<p>In order to solve for the two partial derivatives in the matrix, let's deconstruct our equation for <span class="math">\(z^{[3]}\)</span> so we use <span class="math">\(W^{[3]}_{11}\)</span> and <span class="math">\(W^{[3]}_{12}\)</span>.</p>
+<div class="math">$$z^{[3]} = \textbf{W}^{[3]}a^{[2]} + b^{[3]}$$</div>
+<div class="math">$$z^{[3]} = 
+\begin{bmatrix}
+    W^{[3]}_{11} &amp; W^{[3]}_{12}
+\end{bmatrix}
+\begin{bmatrix}
+    a^{[2]}_{11} \\
+    a^{[2]}_{21}
+\end{bmatrix}+ b^{[3]}$$</div>
+<div class="math">$$z^{[3]} = W^{[3]}_{11}a^{[2]}_{11} + W^{[3]}_{12}a^{[2]}_{21}+ b^{[3]}$$</div>
+<p>Now we can calculate the partial derivative of <span class="math">\(z^{[3]}\)</span> with respect to <span class="math">\(W^{[3]}_{11}\)</span> -</p>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{W^{[3]}_{11}}} = (1)a^{[2]}_{11} + 0 + 0$$</div>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{W^{[3]}_{11}}} = a^{[2]}_{11}$$</div>
+<p>And the partial derivative of <span class="math">\(z^{[3]}\)</span> with respect to <span class="math">\(W^{[3]}_{12}\)</span> -</p>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{W^{[3]}_{12}}} = (1)a^{[2]}_{21} + 0 + 0$$</div>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{W^{[3]}_{12}}} = a^{[2]}_{21}$$</div>
+<p>So interestingly, the partial gradients with respect to the elements of the weight matrix <span class="math">\(\textbf{W}^{[3]}\)</span> are equal to the elements of the activations vector <span class="math">\(a^{[2]}\)</span> that they multiply with. This is a key point going forward when we try to generalize this process computing the larger gradient matricies.</p>
+<p>Ok so now we will update our Jacobian matrix of <span class="math">\(z^{[3]}\)</span> with respect to <span class="math">\(\textbf{W}^{[3]}\)</span> and get the following:</p>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{\textbf{W}^{[3]}}} = 
+\begin{bmatrix}
+    a^{[2]}_{11} &amp; a^{[2]}_{21}
+\end{bmatrix}$$</div>
+<p>And just like a good Jacobian, the partial derivative has dimensions <span class="math">\((1,2)\)</span>, which match the number of entries in <span class="math">\(z^{[3]}\)</span> (1 since it's a scalar value) and the number of entries in <span class="math">\(\textbf{W}^{[3]}\)</span> (2).</p>
+<p>Notice that <span class="math">\(a^{[2]}\)</span> has dimensions (2, 1), and the derivative has dimensions (1,2). On closer investigation, it's just the transpose of <span class="math">\(a^{[2]}\)</span>. So another way to write it would be - </p>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{\textbf{W}^{[3]}}} = a^{[2]T}$$</div>
+<p>Great! Let's move on to the calculating the partial derivative of <span class="math">\(z^{[3]}\)</span> with respect to <span class="math">\(b^{[3]}\)</span>.</p>
+<div class="math">$$z^{[3]} = W^{[3]}_{11}a^{[2]}_{11} + W^{[3]}_{12}a^{[2]}_{21}+ b^{[3]}$$</div>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{b^{[3]}}} = 0 + 0 + 1$$</div>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{b^{[3]}}} = 1$$</div>
+<p>And it's just 1! That's nice and simple. Now let's summarize all of our results from previous calculations and combine them to solve our original problem. So recall that our original problem was to calculate the partial derivative of the cost function <span class="math">\(J\)</span> with respect to the weights <span class="math">\(W^{[3]}\)</span> and biases <span class="math">\(b^{[3]}\)</span> connecting the second hidden layer <span class="math">\(a^{[2]}\)</span> to the output layer. We were able to deconstruct the derivative using the chain rule, and the results looked like this:</p>
+<div class="math">$$\dfrac{\partial{J}}{\partial{\textbf{W}^{[3]}}} = 
+\dfrac{d{J}}{d{a^{[3]}}}
+\dfrac{d{a^{[3]}}}{d{z^{[3]}}}
+\dfrac{\partial{z^{[3]}}}{\partial{\textbf{W}^{[3]}}}$$</div>
+<div class="math">$$\dfrac{\partial{\mathcal{L}}}{\partial{b^{[3]}}} =
+\dfrac{d{\mathcal{L}}}{d{a^{[3]}}}
+\dfrac{d{a^{[3]}}}{d{z^{[3]}}}
+\dfrac{\partial{z^{[3]}}}{\partial{b^{[3]}}}$$</div>
+<p>We spent the last few sections calculating the 4 intermediate derivatives needed to calculate the partial derivative of the loss function <span class="math">\(\mathcal{L}\)</span> with respect to the weights <span class="math">\(\textbf{W}^{[3]}\)</span> and biases <span class="math">\(b^{[3]}\)</span>.</p>
+<div class="math">$$\dfrac{d{\mathcal{L}}}{d{a^{[3]}}} = \dfrac{-y}{a^{[3]}} + \dfrac{(1-y)}{1-a^{[3]}} $$</div>
+<div class="math">$$\dfrac{d{a^{[3]}}}{d{z^{[3]}}} = a^{[3]}(1-a^{[3]})$$</div>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{\textbf{W}^{[3]}}} = a^{[2]T}$$</div>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{b^{[3]}}} = 1$$</div>
+<p>Let's simplify the derivative of the cost function <span class="math">\(J\)</span> with respect to <span class="math">\(z^{[3]}\)</span>.
+</p>
+<div class="math">$$\dfrac{dJ}{d z^{[3]}} = \dfrac{dJ}{d{a^{[3]}}}\dfrac{d{a^{[3]}}}{d{z^{[3]}}}$$</div>
+<div class="math">$$ = \bigg(\dfrac{-y}{a^{[3]}} + \dfrac{(1-y)}{1-a^{[3]}}\bigg)a^{[3]}(1-a^{[3]})$$</div>
+<div class="math">$$= -y(1-a^{[3]}) + (1-y)a^{[3]}$$</div>
+<div class="math">$$= -y+ya^{[3]} + a^{[3]} -ya^{[3]}$$</div>
+<div class="math">$$=a^{[3]} - y$$</div>
+<p>If we substitute these values in, we get:</p>
+<div class="math">$$\dfrac{\partial{J}}{\partial{\textbf{W}^{[3]}}} = (a^{[3]} - y) a^{[2]T}$$</div>
+<div class="math">$$\dfrac{\partial{J}}{\partial{b^{[3]}}} = a^{[3]} - y$$</div>
+<p>And that's it! And luckily, the dimensions of our partial derivatives, <span class="math">\((1,2)\)</span> and <span class="math">\(1\)</span> respectively, match the gradient matricies we wanted to calculate. So we get:</p>
+<div class="math">$$d\textbf{W}^{[3]} = (a^{[3]} - y) a^{[2]T}$$</div>
+<div class="math">$$d b^{[3]} = a^{[3]} - y$$</div>
+<div class="math">$$\bigg( d\textbf{W}^{[1]}, d\textbf{b}^{[1]}, d\textbf{W}^{[2]}, d\textbf{b}^{[2]}, 
+d\textbf{W}^{[3]}, db^{[3]} \bigg)$$</div>
+<p>We solved the first two gradient matricies <span class="math">\((d\textbf{W}^{[3]}, db^{[3]})\)</span>. Our goal was to solve for 29 gradients, and we just finished 3, since the partial derivative with respect to <span class="math">\(\textbf{W}^{[3]}\)</span> is a <span class="math">\((1, 2)\)</span> matrix and therefore has two elements and the partial derivative with respect to <span class="math">\(b^{[3]}\)</span> has only one element.</p>
+<p>Next, we continue to move backwards and focus on calculating the derivative of the loss function <span class="math">\(\mathcal{L}\)</span> with respect to <span class="math">\(\textbf{W}^{[2]}\)</span> and <span class="math">\(\textbf{b}^{[2]}\)</span>. Starting with breaking it up using the chain rule, we get:</p>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\textbf{W}^{[2]}}} = 
+\dfrac{d{J}}{d{z^{[3]}}}
+\dfrac{d{z^{[3]}}}{d{\textbf{a}^{[2]}}}
+\dfrac{d{\textbf{a}^{[2]}}}{d{\textbf{z}^{[2]}}}
+\dfrac{\partial{\textbf{z}^{[2]}}}{\partial{\textbf{W}^{[2]}}}
+$$</div>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\textbf{b}^{[2]}}} = 
+\dfrac{d{\mathcal{L}}}{d{z^{[3]}}}
+\dfrac{d{z^{[3]}}}{d{\textbf{a}^{[2]}}}
+\dfrac{d{\textbf{a}^{[2]}}}{d{\textbf{z}^{[2]}}}
+\dfrac{\partial{\textbf{z}^{[2]}}}{\partial{\textbf{b}^{[2]}}}
+$$</div>
+<p>Notice that since:</p>
+<div class="math">$$
+\dfrac{d{J}}{d{z^{[3]}}} = 
+\dfrac{d{J}}{d{a^{[3]}}}
+\dfrac{d{a^{[3]}}}{d{z^{[3]}}}
+$$</div>
+<p>We already know that it is equal to:</p>
+<div class="math">$$
+\dfrac{d{J}}{d{z^{[3]}}} = a^{[3]} - y$$</div>
+<p>And don't need to calculate it again.</p>
+<p>We sometimes refer to the partial derivative of the cost function <span class="math">\(J\)</span> with respect to <span class="math">\(z^{[3]}\)</span> as <span class="math">\(\delta^{[3]}\)</span>, and will use that notation for the rest of this blog post.</p>
+<p>Let's focus on what we need to calculate. Let's start with the derivative of <span class="math">\(\textbf{z}^{[3]}\)</span> with respect to <span class="math">\(\textbf{z}^{[2]}\)</span>, which we can break down into two steps:</p>
+<div class="math">$$
+\dfrac{d{z^{[3]}}}{d{\textbf{z}^{[2]}}} = 
+\dfrac{d{z^{[3]}}}{d{\textbf{a}^{[2]}}}
+\dfrac{d{\textbf{a}^{[2]}}}{d{\textbf{z}^{[2]}}}
+$$</div>
+<p>We will start with calculating the derivative of <span class="math">\(\textbf{z}^{[3]}\)</span> with respect to the activation <span class="math">\(\textbf{a}^{[2]}\)</span>.</p>
+<p>Recall that <span class="math">\(z^{[3]}\)</span> matches the number of nodes in the output layer and is therefore a scalar value. <span class="math">\(\textbf{a}^{[2]}\)</span> is a <span class="math">\((2,1)\)</span> column vector and its number of entries match the number of nodes in the 3rd layer or the 2nd hidden layer. So the Jacobian matrix looks like:</p>
+<div class="math">$$\dfrac{d{z^{[3]}}}{d{\textbf{a}^{[2]}}} = 
+\begin{bmatrix}
+    \dfrac{\partial{z^{[3]}}}{\partial{a^{[2]}_{11}}} &amp;
+    \dfrac{\partial{z^{[3]}}}{\partial{a^{[2]}_{21}}} 
+\end{bmatrix}$$</div>
+<p>And the equation involving <span class="math">\(z^{[3]}\)</span> and <span class="math">\(\textbf{a}^{[2]}\)</span> is:</p>
+<div class="math">$$z^{[3]} = \textbf{W}^{[3]}\textbf{a}^{[2]} + b^{[3]}$$</div>
+<p>Let's break this equation down:</p>
+<div class="math">$$z^{[3]} = 
+W^{[3]}_{11}a^{[2]}_{11} + 
+W^{[3]}_{12}a^{[2]}_{21} +
+b^{[3]}
+$$</div>
+<p>If we take the partial derivative of <span class="math">\(z^{[3]}\)</span> with respect to <span class="math">\(a^{[2]}_{21}\)</span>, we get:</p>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{a^{[2]}_{21}}} =
+0 + 
+W^{[3]}_{12}(1) +
+0
+$$</div>
+<div class="math">$$\dfrac{\partial{z^{[3]}}}{\partial{a^{[2]}_{21}}} =
+W^{[3]}_{12}
+$$</div>
+<p>Applying this logic to every partial derivative in the vector, we get:</p>
+<div class="math">$$\dfrac{d{z^{[3]}}}{d{\textbf{a}^{[2]}}} = 
+\begin{bmatrix}
+\\
+W^{[3]}_{11} &amp; 
+W^{[3]}_{12}
+\\\\
+\end{bmatrix}$$</div>
+<p>Next, we need to calculate the derivative of <span class="math">\(\textbf{a}^{[2]}\)</span> with respect to <span class="math">\(\textbf{z}^{[2]}\)</span>. </p>
+<p>Both <span class="math">\(\textbf{a}^{[2]}\)</span> and <span class="math">\(\textbf{z}^{[2]}\)</span> are column vectors with dimensions <span class="math">\((2,1)\)</span> and therefore the Jacobian matrix of <span class="math">\(\textbf{a}^{[2]}\)</span> with respect to <span class="math">\(\textbf{z}^{[2]}\)</span> will be: </p>
+<div class="math">$$\dfrac{d{\textbf{a}^{[2]}}}{d{\textbf{z}^{[2]}}} = 
+\begin{bmatrix}
+\\
+    \dfrac{\partial{a^{[3]}_{11}}}{\partial{z^{[2]}_{11}}} &amp;
+    \dfrac{\partial{a^{[3]}_{11}}}{\partial{z^{[2]}_{21}}} \\\\
+    \dfrac{\partial{a^{[3]}_{21}}}{\partial{z^{[2]}_{11}}} &amp;
+    \dfrac{\partial{a^{[3]}_{21}}}{\partial{z^{[2]}_{21}}} \\\\
+\end{bmatrix}$$</div>
+<p>Notice that in order to go from <span class="math">\(\textbf{z}^{[2]} \rightarrow \textbf{a}^{[2]}\)</span>, we apply the ReLU function <span class="math">\(g(z)\)</span> to each element in <span class="math">\(\textbf{z}^{[2]}\)</span>. So for example, to calculate <span class="math">\(a^{[2]}_{21}\)</span>:</p>
+<div class="math">$$a^{[2]}_{21} = g(z^{[2]}_{21})$$</div>
+<p>Applying this logic to every partial derivative in the vector, we get:</p>
+<div class="math">$$\dfrac{d{\textbf{a}^{[2]}}}{d{\textbf{z}^{[2]}}} = 
+\begin{bmatrix}
+\\
+    g'(z^{[2]}_{11}) &amp; 0 \\\\ 
+    0 &amp; g'(z^{[2]}_{21})
+\\\\
+\end{bmatrix}$$</div>
+<p>Where <span class="math">\(g'(z)\)</span> is the derivative of the ReLU function <span class="math">\(g(z)\)</span>.</p>
+<p>What is the derivative of ReLU equal to?</p>
+<div class="math">$$
+g'(z) = \begin{cases}
+   1 &amp;\text{if } z &gt; 0  \\
+   \text{Undefined} &amp;\text{if } z = 0  \\
+   0 &amp;\text{if } z &lt; 0
+\end{cases}
+$$</div>
+<p>Why is the derivative of <span class="math">\(g\)</span> undefined when <span class="math">\(z = 0\)</span>? For a function  to be differentiable at a point, it has to be continuous at that point. In order for a point to be continuous at a point, the limit of the function as it approaches that point has to defined. In order for the limit to be defined, the left and right hand limits have to equal. In this case, the right hand limit is equal to 1 and the left hand limit is equal to 0. Therefore, ReLU is not differentiable at 0.</p>
+<p>Does it matter that the derivative of the ReLU function is undefined at <span class="math">\(z=0\)</span> for backpropagation? In practice, no since <span class="math">\(z\)</span> will never be truly equal to <span class="math">\(0\)</span> - software implementations will have a rounding error for float points.</p>
+<p>Finally, we will need to calculate the partial derivatives of <span class="math">\(\textbf{z}^{[2]}\)</span> with respect to <span class="math">\(\textbf{W}^{[2]}\)</span> and <span class="math">\(\textbf{b}^{[2]}\)</span>.</p>
+<p>Let's first focus on the partial derivative of <span class="math">\(\textbf{z}^{[2]}\)</span> with respect to <span class="math">\(\textbf{W}^{[2]}\)</span>. <span class="math">\(\textbf{z}^{[2]}\)</span> is a one-dimensional array <span class="math">\((2,1)\)</span> and <span class="math">\(\textbf{W}^{[2]}\)</span> is a two-dimensional matrix <span class="math">\((2,4)\)</span>. Notice that each entry in <span class="math">\(\textbf{z}^{[2]}\)</span> can be though of as the result of a function involving all 8 of the weight entries in <span class="math">\(\textbf{W}^{[2]}\)</span>. So for example, <span class="math">\(z^{[2]}_{11}\)</span> can be though of as:</p>
+<div class="math">$$z^{[2]}_{11} = f_1(W^{[2]}_{11}, \dotsc, W^{[2]}_{14},W^{[2]}_{21},\dotsc W^{[2]}_{24} | \textbf{a}^{[2]}, \textbf{b}^{[2]})$$</div>
+<div class="math">$$z^{[2]}_{11} = W^{[2]}_{11}a^{[2]}_{11} + \dotsc + W^{[2]}_{14}a^{[2]}_{41} +  b^{[2]}_{11}$$</div>
+<p>If we represented the entries in <span class="math">\(\textbf{z}^{[2]}\)</span> in this way, we get:</p>
+<div class="math">$$\textbf{z}^{[2]} = 
+\begin{bmatrix}
+f_1(W^{[2]}_{11}, W^{[2]}_{12}, W^{[2]}_{13},W^{[2]}_{14},W^{[2]}_{21},\dotsc W^{[2]}_{24} | \textbf{a}^{[2]}, \textbf{b}^{[2]}) \\\\
+f_1(W^{[2]}_{11}, W^{[2]}_{12}, W^{[2]}_{13},W^{[2]}_{14},W^{[2]}_{21},\dotsc W^{[2]}_{24} | \textbf{a}^{[2]}, \textbf{b}^{[2]})
+\end{bmatrix}
+$$</div>
+<p>And the Jacobian matrix would look like:</p>
+<div class="math">$$
+\dfrac{\partial \textbf{z}^{[2]}}{\partial \textbf{W}^{[2]}} = 
+\begin{bmatrix}
+\dfrac{\partial z^{[2]}_{11}}{\partial W^{[2]}_{11}} &amp;
+\dotsc &amp; 
+\dfrac{\partial z^{[2]}_{11}}{\partial W^{[2]}_{14}} &amp;
+\dfrac{\partial z^{[2]}_{11}}{\partial W^{[2]}_{21}} &amp;
+\dotsc &amp;
+\dfrac{\partial z^{[2]}_{11}}{\partial W^{[2]}_{24}} \\\\
+\dfrac{\partial z^{[2]}_{21}}{\partial W^{[2]}_{11}} &amp;
+\dotsc &amp; 
+\dfrac{\partial z^{[2]}_{21}}{\partial W^{[2]}_{14}} &amp;
+\dfrac{\partial z^{[2]}_{21}}{\partial W^{[2]}_{21}} &amp;
+\dotsc &amp;
+\dfrac{\partial z^{[2]}_{21}}{\partial W^{[2]}_{24}} \\\\
+\end{bmatrix}
+$$</div>
+<p>So the Jacobian matrix has dimensions <span class="math">\((2, 8)\)</span>, which is equal to the number of entries in <span class="math">\(\textbf{z}^{[2]}\)</span> and the number of entries in <span class="math">\(\textbf{W}^{[2]}\)</span>.</p>
+<p>But do we need to calculate all 16 derivatives? Luckily, no. The reason is that most of the derivatives will be equal to <span class="math">\(0\)</span>, and will stay <span class="math">\(0\)</span> regardless if we change the values of any of the variables.</p>
+<p>In order to illustrate this point, let's look at the first element of <span class="math">\(z^{[2]}\)</span>:</p>
+<div class="math">$$z^{[2]}_{11} = W^{[2]}_{11}a^{[1]}_{11} + W^{[2]}_{12}a^{[1]}_{21} + W^{[2]}_{13}a^{[1]}_{31} + W^{[2]}_{14}a^{[1]}_{41} $$</div>
+<p>Notice that in order to calculate the partial derivative of <span class="math">\(z^{[2]}_1\)</span> with respect to <span class="math">\(W^{[2]}\)</span>, we only need to worry about <span class="math">\(W^{[2]}_{11}\)</span>, <span class="math">\(W^{[2]}_{12}\)</span>, <span class="math">\(W^{[2]}_{13}\)</span>, and <span class="math">\(W^{[2]}_{14}\)</span> and not the other 4 scalar variables in <span class="math">\(W^{[2]}\)</span>. As a general rule of thumb, the partial derivative of a scalar element in vector <span class="math">\(a\)</span> with respect to a scalar element in matrix <span class="math">\(W\)</span> will be nonzero when the x-dimension of <span class="math">\(W\)</span> matches the dimension of <span class="math">\(a\)</span>.</p>
+<p>And from a previous calculation, we know that the derivative of a scalar component of <span class="math">\(z\)</span> with respect to a scalar component of <span class="math">\(W\)</span> is just that scalar component of <span class="math">\(W\)</span> if it's included in the calculation of the scalar component of <span class="math">\(z\)</span>, so we get this fun matrix:</p>
+<div class="math">$$
+\dfrac{\partial \textbf{z}^{[2]}}{\partial \textbf{W}^{[2]}} = 
+\begin{bmatrix}
+a^{[2]}_{11} &amp;
+\dotsc &amp; 
+a^{[2]}_{41} &amp;
+0 &amp;
+\dotsc &amp;
+0 \\\\
+0 &amp;
+\dotsc &amp; 
+0 &amp;
+a^{[2]}_{11} &amp; 
+\dotsc &amp;
+a^{[2]}_{41} &amp; \\\\
+\end{bmatrix}
+$$</div>
+<p>Now, let's calculate the Jacobian matrix of <span class="math">\(\textbf{z}^{[2]}\)</span> with respect to <span class="math">\(\textbf{b}^{[2]}\)</span>. It's pretty simple, just like last time the derivatives that involve the entry of <span class="math">\(\textbf{b}^{[2]}\)</span> are equal to 1.</p>
+<div class="math">$$\dfrac{\partial \textbf{z}^{[2]}}{\partial \textbf{b}^{[2]}} = 
+\begin{bmatrix}
+    1 &amp; 0 \\\\
+    0 &amp; 1 
+\end{bmatrix}$$</div>
+<p>The dimensions <span class="math">\((2,2)\)</span> of the Jacobian matrix are equal to the number of entries in <span class="math">\(\textbf{z}^{[2]}\)</span> and <span class="math">\(\textbf{b}^{[2]}\)</span>, respectively.</p>
+<p>We have all the pieces to finally calculate the derivative of the cost function <span class="math">\(J\)</span> with respect to <span class="math">\(\mathbf{W}^{[2]}\)</span> and <span class="math">\(\mathbf{b}^{[2]}\)</span>. </p>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\mathbf{W}^{[2]}}} = 
+\delta^{[3]}
+\dfrac{d{z^{[3]}}}{d{\mathbf{z}^{[2]}}}
+\dfrac{\partial{\mathbf{z}^{[2]}}}{\partial{\mathbf{W}^{[2]}}}
+$$</div>
+<p>And this is how we deconstructed the derivative of the loss function <span class="math">\(\mathcal{L}\)</span> with respect to <span class="math">\(b^{[2]}\)</span>.</p>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\mathbf{b}^{[2]}}} = 
+\delta^{[3]}
+\dfrac{d{z^{[3]}}}{d{\mathbf{z}^{[2]}}}
+\dfrac{\partial{\mathbf{z}^{[2]}}}{\partial{\mathbf{b}^{[2]}}}
+$$</div>
+<p>To summarize our calculations and the dimensions of each:</p>
+<div class="math">$$
+\delta^{[3]} = 
+a^{[3]} - y
+$$</div>
+<p>
+Is a scalar value.</p>
+<div class="math">$$\dfrac{d{z^{[3]}}}{d{\textbf{a}^{[2]}}} = 
+\begin{bmatrix}
+\\
+    W^{[3]}_{11} &amp; 
+    W^{[3]}_{12}
+\\\\
+\end{bmatrix}$$</div>
+<p>Is a <span class="math">\((1,2)\)</span> matrix.</p>
+<div class="math">$$\dfrac{d{\textbf{a}^{[2]}}}{d{\textbf{z}^{[2]}}} = 
+\begin{bmatrix}
+\\
+    g'(z^{[2]}_{11}) &amp; 0 \\\\ 
+    0 &amp; g'(z^{[2]}_{21})
+\\\\
+\end{bmatrix}$$</div>
+<p>Is a <span class="math">\((2, 2)\)</span> matrix.</p>
+<div class="math">$$
+\dfrac{\partial \textbf{z}^{[2]}}{\partial \textbf{W}^{[2]}} = 
+\begin{bmatrix}
+a^{[2]}_{11} &amp;
+\dotsc &amp; 
+a^{[2]}_{41} &amp;
+0 &amp;
+\dotsc &amp;
+0 \\\\
+0 &amp;
+\dotsc &amp; 
+0 &amp;
+a^{[2]}_{11} &amp; 
+\dotsc &amp;
+a^{[2]}_{41} &amp; \\\\
+\end{bmatrix}
+$$</div>
+<p>Is a <span class="math">\((2,8)\)</span> matrix.</p>
+<div class="math">$$\dfrac{\partial \textbf{z}^{[2]}}{\partial \textbf{b}^{[2]}} = 
+\begin{bmatrix}
+    1 &amp; 0 \\\\
+    0 &amp; 1 
+\end{bmatrix}$$</div>
+<p>Is a <span class="math">\((2,2)\)</span> matrix.</p>
+<p>Let's first try and calculate the derivative of <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{W}^{[2]}\)</span>. We can start by looking at:</p>
+<div class="math">$$\dfrac{\partial{J}}{\partial{\mathbf{z}^{[2]}}} = 
+\delta^{[3]}
+\dfrac{d{z^{[3]}}}{d{\mathbf{a}^{[2]}}}
+\dfrac{d{a^{[3]}}}{d{\mathbf{z}^{[2]}}}$$</div>
+<div class="math">$$\dfrac{\partial{J}}{\partial{\mathbf{z}^{[2]}}} = \delta^{[3]}
+\begin{bmatrix}
+\\
+    W^{[3]}_{11} &amp; 
+    W^{[3]}_{12}
+\\\\
+\end{bmatrix}
+\begin{bmatrix}
+\\
+    g'(z^{[2]}_{11}) &amp; 0 \\\\ 
+    0 &amp; g'(z^{[2]}_{21})
+\\\\
+\end{bmatrix}
+$$</div>
+<p>So this is the Jacobian Matrix of <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{z}^{[2]}\)</span>. But notice that this matrix is <span class="math">\((1,2)\)</span> but <span class="math">\(\textbf{z}^{[2]}\)</span> is <span class="math">\((2,1)\)</span>. We can define a gradient matrix similar to what we did for the weights and bias parameters that match the dimensions of <span class="math">\(\textbf{z}^{[2]}\)</span> called <span class="math">\(\boldsymbol{\delta}^{[2]}\)</span>:</p>
+<div class="math">$$
+\boldsymbol{\delta}^{[2]} = 
+\bigg( \dfrac{\partial{J}}{\partial{\mathbf{z}^{[2]}}}\bigg)^T
+$$</div>
+<p>Recall that given three matricies <span class="math">\(\textbf{A}\)</span>, <span class="math">\(\textbf{B}\)</span>, and <span class="math">\(\textbf{d}\)</span> the <span class="math">\((\textbf{ABC})^T = \textbf{C}^T\textbf{B}^T\textbf{A}^T\)</span></p>
+<div class="math">$$
+\boldsymbol{\delta}^{[2]} = \begin{bmatrix}
+\\
+    g'(z^{[2]}_{11}) &amp; 0 \\\\ 
+    0 &amp; g'(z^{[2]}_{21})
+\\\\
+\end{bmatrix}
+\begin{bmatrix}
+\\
+    W^{[3]}_{11} \\\\ 
+    W^{[3]}_{12}
+\\\\
+\end{bmatrix}
+\delta^{[3]}
+$$</div>
+<h1>$$</h1>
+<div class="math">\begin{bmatrix}
+\\
+    g'(z^{[2]}_{11})W^{[3]}_{11}\delta^{[3]} \\\\ 
+    g'(z^{[2]}_{21})W^{[3]}_{12}\delta^{[3]}
+\\\\
+\end{bmatrix}</div>
+<p>
+$$</p>
+<p>Notice when we rearranged the products in the matrix, we get:</p>
+<div class="math">$$
+\boldsymbol{\delta}^{[2]} = 
+\begin{bmatrix}
+\\
+    W^{[3]}_{11}\delta^{[3]}g'(z^{[2]}_{11}) \\\\ 
+    W^{[3]}_{12}\delta^{[3]}g'(z^{[2]}_{21})
+\\\\
+\end{bmatrix}
+$$</div>
+<h1>$$</h1>
+<div class="math">\begin{bmatrix}
+\\
+    W^{[3]}_{11}\delta^{[3]} \\\\ 
+    W^{[3]}_{12}\delta^{[3]}
+\\\\
+\end{bmatrix}</div>
+<p>
+*
+g'(\textbf{z}^{[2]})
+$$</p>
+<p>Where <span class="math">\(*\)</span> indicates elementwise multiplication between two matricies. <span class="math">\(g'(\textbf{z}^{[2]})\)</span> is a columnwise vector of the derivative of ReLU <span class="math">\(g'(z)\)</span> applied to each entry of <span class="math">\(\textbf{z}^{[2]}\)</span>.</p>
+<p>Next, we can decompose the result into:</p>
+<div class="math">$$
+\boldsymbol{\delta}^{[2]}= 
+\begin{bmatrix}
+\\
+    W^{[3]}_{11} \\\\ 
+    W^{[3]}_{12}
+\\\\
+\end{bmatrix}
+\delta^{[3]}
+*
+g'(\textbf{z}^{[2]})
+$$</div>
+<div class="math">$$
+\boldsymbol{\delta}^{[2]}= 
+\textbf{W}^{[3]T}
+\delta^{[3]}
+*
+g'(\textbf{z}^{[2]})
+$$</div>
+<p>This final result the gradient of the cost function <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{z}^{[2]}\)</span>. It is a <span class="math">\((2,1)\)</span> column vector with dimensions that match <span class="math">\(\textbf{z}^{[2]}\)</span>.</p>
+<p>Plugging that result into our equation we get:</p>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\mathbf{W}^{[2]}}} = 
+\dfrac{\partial{J}}{\partial{\mathbf{z}^{[2]}}}
+\dfrac{\partial{\mathbf{z}^{[2]}}}{\partial{\mathbf{W}^{[2]}}}
+$$</div>
+<p>$$
+\dfrac{\partial{J}}{\partial{\mathbf{W}^{[2]}}} = 
+\boldsymbol{\delta}^{[2]T}
+\begin{bmatrix}
+a^{[2]}<em 41>{11} &amp;
+\dotsc &amp; 
+a^{[2]}</em> &amp;
+0 &amp;
+\dotsc &amp;
+0 \\</p>
+<p>0 &amp;
+\dotsc &amp; 
+0 &amp;
+a^{[2]}<em 41>{11} &amp; 
+\dotsc &amp;
+a^{[2]}</em> &amp; \\
+\end{bmatrix}
+$$</p>
+<div class="math">$$
+ = 
+\begin{bmatrix}
+\delta^{[2]}_{11} &amp;
+\delta^{[2]}_{21}
+\end{bmatrix}
+\begin{bmatrix}
+a^{[2]}_{11} &amp;
+\dotsc &amp; 
+a^{[2]}_{41} &amp;
+0 &amp;
+\dotsc &amp;
+0 \\\\
+0 &amp;
+\dotsc &amp; 
+0 &amp;
+a^{[2]}_{11} &amp; 
+\dotsc &amp;
+a^{[2]}_{41} &amp; \\\\
+\end{bmatrix}
+$$</div>
+<p>And we get this fun <span class="math">\((1, 8)\)</span> Jacobian matrix:</p>
+<p>$$\dfrac{\partial{J}}{\partial{\textbf{W}^{[2]}}} = 
+\begin{bmatrix}
+\
+\delta^{[2]}<em 11>{11}a^{[2]}</em> &amp; 
+\delta^{[2]}<em 21>{11}a^{[2]}</em> &amp;
+\delta^{[2]}<em 31>{11}a^{[2]}</em> &amp; 
+\delta^{[2]}<em 41>{11}a^{[2]}</em> &amp;</p>
+<p>\delta^{[2]}<em 11>{21}a^{[2]}</em> &amp; 
+\delta^{[2]}<em 21>{21}a^{[2]}</em> &amp;
+\delta^{[2]}<em 31>{21}a^{[2]}</em> &amp; 
+\delta^{[2]}<em 41>{21}a^{[2]}</em> \\
+\end{bmatrix}
+$$</p>
+<p>So this is our Jacobian. But we need our gradient matrix <span class="math">\(d\textbf{W}^{[2]}\)</span> to have dimensions that match <span class="math">\(\textbf{W}^{[2]}\)</span>. So we will reshape the Jacobian into a <span class="math">\((2,4)\)</span> matrix.</p>
+<div class="math">$$d\textbf{W}^{[2]} = 
+\begin{bmatrix}
+\\
+\delta^{[2]}_{11}a^{[2]}_{11} &amp; 
+\dotsc &amp;
+\delta^{[2]}_{11}a^{[2]}_{41} \\\\
+\delta^{[2]}_{21}a^{[2]}_{11} &amp; 
+\dotsc &amp; 
+\delta^{[2]}_{21}a^{[2]}_{41} \\\\
+\end{bmatrix}
+$$</div>
+<p>And, interestingly, we can break this apart into two matricies.</p>
+<div class="math">$$d\textbf{W}^{[2]} = 
+\begin{bmatrix}
+\\
+\delta^{[2]}_{11} \\\\
+\delta^{[2]}_{21} \\\\
+\end{bmatrix}
+\begin{bmatrix}
+\\
+a^{[2]}_{11} &amp; a^{[2]}_{21} &amp;  a^{[2]}_{31} &amp; a^{[2]}_{41} \\\\
+\end{bmatrix}
+$$</div>
+<p>Which becomes:</p>
+<div class="math">$$d\textbf{W}^{[2]} = \boldsymbol{\delta}^{[2]}\textbf{a}^{[2]T}$$</div>
+<p>Alright, so you might be wondering, why did we need to go through all that work to arrive at that simple result? The reason is because most tutorials, blog posts, and courses skip the math and arrive at this result. But I think it's important to work through how we arrive there step by step. When we go through it step by step, we begin to understand how each of these operations relates to linear algebra and multivariate calculus. When we are just presented with the final result, we tend to just memorize it.</p>
+<p>Let's now calculate the partial derivative of the loss <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{b}^{[2]}\)</span>, which luckily is a lot easier.</p>
+<div class="math">$$\dfrac{\partial J}{\partial{\textbf{b}^{[2]}}} = \dfrac{dJ}{d{\textbf{z}^{[2]}}}
+\dfrac{\partial{\textbf{z}^{[2]}}}{\partial{\textbf{b}^{[2]}}}$$</div>
+<p>We know that:</p>
+<div class="math">$$\dfrac{\partial \textbf{z}^{[2]}}{\partial \textbf{b}^{[2]}} = 
+\begin{bmatrix}
+    1 &amp; 0 \\\\
+    0 &amp; 1 
+\end{bmatrix}$$</div>
+<p>Which is just the identity matrix. So the partial derivative just simplfies to become:</p>
+<div class="math">$$\dfrac{\partial{J}}{\partial{\textbf{b}^{[2]}}} = \boldsymbol{\delta}^{[2]T}$$</div>
+<p>And the gradient <span class="math">\(d\textbf{b}^{[2]}\)</span> is therefore just the transpose of the Jacobian, or:</p>
+<div class="math">$$
+d\textbf{b}^{[2]} = \boldsymbol{\delta}^{[2]}
+$$</div>
+<p>Which is a <span class="math">\((2,1)\)</span> column vector, and matches the dimensions of <span class="math">\(\textbf{b}^{[2]}\)</span>.</p>
+<p>Great! So we calculated two more gradient matricies (four in total), and we still have two more to go.</p>
+<div class="math">$$\bigg( d\textbf{W}^{[1]}, d\textbf{b}^{[1]}, d\textbf{W}^{[2]}, d\textbf{b}^{[2]}, 
+d\textbf{W}^{[3]}, db^{[3]} \bigg)$$</div>
+<p>We also said that by breaking down all the gradient matricies into their respective partial derivatives, we needed to solve for 29. We solved for <span class="math">\(3\)</span> in layer 3, and <span class="math">\(8 + 2 = 10\)</span> in the second layer. 16 more to go!</p>
+<p>&nbsp;</p>
+<h3>Calculating <span class="math">\(d\textbf{W}^{[1]}\)</span> and <span class="math">\(d\textbf{b}^{[1]}\)</span></h3>
+<p>So by this point you should know the drill. In order to calculate our gradient matricies, we need to calculate the Jacobian Matricies of <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{W}^{[1]}\)</span> and <span class="math">\(\textbf{b}^{[1]}\)</span> </p>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\textbf{W}^{[1]}}} = 
+\dfrac{d{J}}{d{\textbf{z}^{[2]}}}
+\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{a}^{[1]}}}
+\dfrac{d\textbf{a}^{[1]}}{d{\textbf{z}^{[1]}}}
+\dfrac{\partial{\textbf{z}^{[1]}}}{\partial{\textbf{W}^{[1]}}}
+$$</div>
+<h3></h3>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\textbf{b}^{[1]}}} = 
+\dfrac{d{J}}{d{\textbf{z}^{[2]}}}
+\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{a}^{[1]}}}
+\dfrac{d{\textbf{a}^{[1]}}}{d{\textbf{a}^{[1]}}}
+\dfrac{\partial{\textbf{z}^{[1]}}}{\partial{\textbf{b}^{[1]}}}
+$$</div>
+<p>We already know that:</p>
+<div class="math">$$
+\dfrac{d{J}}{d{\mathbf{z}^{[2]}}} = \delta^{[2]T}$$</div>
+<p>Which is a <span class="math">\((1,2)\)</span> matrix.</p>
+<p>We are going to lump a couple of derivatives together.</p>
+<div class="math">$$
+\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{z}^{[1]}}} =
+\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{a}^{[1]}}}
+\dfrac{d\textbf{a}^{[1]}}{d{\textbf{z}^{[1]}}}
+$$</div>
+<p>And just solve for the Jacobian matrix of <span class="math">\(\textbf{z}^{[2]}\)</span> with respect to <span class="math">\(\textbf{z}^{[1]}\)</span>. </p>
+<div class="math">$$\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{z}^{[1]}}} = 
+\begin{bmatrix}
+\\
+    \dfrac{\partial{z^{[2]}_{11}}}{\partial{z^{[1]}_{11}}} &amp; 
+    \dfrac{\partial{z^{[2]}_{11}}}{\partial{z^{[1]}_{21}}} &amp;
+    \dfrac{\partial{z^{[2]}_{11}}}{\partial{z^{[1]}_{31}}} &amp;
+    \dfrac{\partial{z^{[2]}_{11}}}{\partial{z^{[1]}_{41}}} \\\\
+    \dfrac{\partial{z^{[2]}_{21}}}{\partial{z^{[1]}_{11}}} &amp; 
+    \dfrac{\partial{z^{[2]}_{21}}}{\partial{z^{[1]}_{21}}} &amp;
+    \dfrac{\partial{z^{[2]}_{21}}}{\partial{z^{[1]}_{31}}} &amp;
+    \dfrac{\partial{z^{[2]}_{21}}}{\partial{z^{[1]}_{41}}} \\\\
+\end{bmatrix}$$</div>
+<p>With dimensions <span class="math">\((2,4)\)</span>. Again, the first dimension matches the number of entries in <span class="math">\(\textbf{z}^{[2]}\)</span> and the second dimension mathces the number of entries in <span class="math">\(\textbf{z}^{[1]}\)</span>  Similar to the previous layer, when we plug in values we get this matrix:</p>
+<div class="math">$$
+\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{z}^{[1]}}} = 
+\begin{bmatrix}\\
+    W^{[2]}_{11} &amp; 
+    \dotsc &amp;
+    W^{[2]}_{14}\\\\
+    W^{[2]}_{21} &amp; 
+    \dotsc &amp;
+    W^{[2]}_{24} \\\\
+\end{bmatrix}
+\begin{bmatrix}\\
+    g'(z^{[1]}_{11}) &amp; 0 &amp; 0 &amp; 0 \\\\
+    0 &amp; g'(z^{[1]}_{21}) &amp; 0 &amp; 0 \\\\
+    0 &amp; 0 &amp; g'(z^{[1]}_{31}) &amp; 0 \\\\
+    0 &amp; 0 &amp; 0 &amp;g'(z^{[1]}_{41}) \\\\
+\end{bmatrix}
+$$</div>
+<p>Alright, now we need to calculate the partial derivative of <span class="math">\(\textbf{z}^{[1]}\)</span> with respect to <span class="math">\(\textbf{W}^{[1]}\)</span>. Like last time, we can construct the Jacobian matrix:</p>
+<div class="math">$$
+\dfrac{\partial \textbf{z}^{[1]}}{\partial \textbf{W}^{[1]}} = 
+\begin{bmatrix}
+\dfrac{\partial z^{[1]}_{11}}{\partial W^{[1]}_{11}} &amp;
+\dotsc &amp; 
+\dfrac{\partial z^{[1]}_{11}}{\partial W^{[1]}_{43}} \\\\
+\dfrac{\partial z^{[1]}_{21}}{\partial W^{[1]}_{11}} &amp;
+\dotsc &amp; 
+\dfrac{\partial z^{[1]}_{21}}{\partial W^{[1]}_{43}} \\\\
+\dfrac{\partial z^{[1]}_{31}}{\partial W^{[1]}_{11}} &amp;
+\dotsc &amp; 
+\dfrac{\partial z^{[1]}_{31}}{\partial W^{[1]}_{43}} \\\\
+\dfrac{\partial z^{[1]}_{41}}{\partial W^{[1]}_{11}} &amp;
+\dotsc &amp; 
+\dfrac{\partial z^{[1]}_{41}}{\partial W^{[1]}_{43}} \\\\
+\end{bmatrix}
+$$</div>
+<p>So the Jacobian matrix has dimensions <span class="math">\((4, 12)\)</span>, which is equal to the number of entries in <span class="math">\(\textbf{z}^{[1]}\)</span> and the number of entries in <span class="math">\(\textbf{W}^{[1]}\)</span> <span class="math">\((4*3 = 12)\)</span>.</p>
+<p>And similar to our previous calculation, it simplifies to become:</p>
+<div class="math">$$
+\dfrac{\partial \textbf{z}^{[1]}}{\partial \textbf{W}^{[1]}} = 
+\begin{bmatrix}
+x_{11} &amp;
+x_{21} &amp; 
+x_{31} &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 \\\\
+0 &amp;
+0 &amp; 
+0 &amp;
+x_{11} &amp;
+x_{21} &amp; 
+x_{31} &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 \\\\
+0 &amp;
+0 &amp; 
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+x_{11} &amp;
+x_{21} &amp; 
+x_{31} &amp;
+0 &amp;
+0 &amp;
+0 \\\\
+0 &amp;
+0 &amp; 
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+x_{11} &amp;
+x_{21} &amp; 
+x_{31} &amp; \\\\
+\end{bmatrix}
+$$</div>
+<p>Like last time, the Jacobian matrix of <span class="math">\(\textbf{z}^{[1]}\)</span> with respect to <span class="math">\(\textbf{b}^{[1]}\)</span> is equal to the identity matrix:</p>
+<div class="math">$$\dfrac{\partial \textbf{z}^{[1]}}{\partial \textbf{b}^{[1]}} = 
+\begin{bmatrix}
+\\
+    1 &amp; 0 &amp; 0 &amp; 0 \\\\
+    0 &amp; 1 &amp; 0 &amp; 0 \\\\
+    0 &amp; 0 &amp; 1 &amp; 0 \\\\
+    0 &amp; 0 &amp; 0 &amp; 1 \\\\
+\end{bmatrix}$$</div>
+<p>The dimensions <span class="math">\((4,4)\)</span> of the Jacobian matrix are equal to the number of entries in <span class="math">\(\textbf{z}^{[1]}\)</span> and <span class="math">\(\textbf{b}^{[1]}\)</span>, respectively.</p>
+<p>Now we have the intermediate pieces to calculate the partial derivative of <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{W}^{[1]}\)</span> and <span class="math">\(\textbf{b}^{[1]}\)</span>, which will eventually allow us to calculate the gradient matrix.</p>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\textbf{W}^{[1]}}} = 
+\dfrac{d{J}}{d{\textbf{z}^{[2]}}}
+\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{z}^{[1]}}}
+\dfrac{\partial{\textbf{z}^{[1]}}}{\partial{\textbf{W}^{[1]}}}
+$$</div>
+<h3></h3>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\textbf{b}^{[1]}}} = 
+\dfrac{d{J}}{d{\textbf{z}^{[2]}}}
+\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{z}^{[1]}}}
+\dfrac{\partial{\textbf{z}^{[1]}}}{\partial{\textbf{b}^{[1]}}}
+$$</div>
+<p>Let's start by calculating the derivative of <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{z}^{[1]}\)</span>:</p>
+<div class="math">$$
+\dfrac{d{J}}{d{\textbf{z}^{[1]}}} = 
+\dfrac{d{J}}{d{\textbf{z}^{[2]}}}
+\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{z}^{[1]}}}
+$$</div>
+<div class="math">$$
+\dfrac{d{J}}{d{\mathbf{z}^{[2]}}} = 
+\boldsymbol{\delta}^{[2]T}
+\dfrac{d{\textbf{z}^{[2]}}}{d{\textbf{z}^{[1]}}}$$</div>
+<p>So this is the Jacobian Matrix of <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{z}^{[2]}\)</span>. Let's figure out the dimensions for this matrix based on the dimensions of its components. <span class="math">\(\boldsymbol{\delta}^{[2]T}\)</span> has dimensions (1, 2), and the derivative of <span class="math">\(\textbf{z}^{[2]}\)</span> with respect to <span class="math">\(\textbf{z}^{[1]}\)</span> has dimensions <span class="math">\((2,4)\)</span>. Doing the matrix multiply, we get a matrix of dimensions <span class="math">\((1,4)\)</span>, which matches what we would expect. </p>
+<div class="math">$$
+\dfrac{dJ}{d{\textbf{z}^{[1]}}} = 
+\boldsymbol{\delta}^{[2]T}
+\begin{bmatrix}\\
+    W^{[2]}_{11} &amp; 
+    \dotsc &amp;
+    W^{[2]}_{14} \\\\
+    W^{[2]}_{21} &amp; 
+    \dotsc &amp;
+    W^{[2]}_{24} \\\\
+\end{bmatrix}
+\begin{bmatrix}\\
+    g'(z^{[1]}_{11}) &amp; 0 &amp; 0 &amp; 0 \\\\
+    0 &amp; g'(z^{[1]}_{21}) &amp; 0 &amp; 0 \\\\
+    0 &amp; 0 &amp; g'(z^{[1]}_{31}) &amp; 0 \\\\
+    0 &amp; 0 &amp; 0 &amp;g'(z^{[1]}_{41}) \\\\
+\end{bmatrix}
+$$</div>
+<p>To calculate the gradient of the cost function <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{z}^{[1]}\)</span>, we need to take the transpose of the Jacobian matrix.</p>
+<div class="math">$$
+\boldsymbol{\delta}^{[1]} = 
+\begin{bmatrix}\\
+    g'(z^{[1]}_{11}) &amp; 0 &amp; 0 &amp; 0 \\\\
+    0 &amp; g'(z^{[1]}_{21}) &amp; 0 &amp; 0 \\\\
+    0 &amp; 0 &amp; g'(z^{[1]}_{31}) &amp; 0 \\\\
+    0 &amp; 0 &amp; 0 &amp;g'(z^{[1]}_{41}) \\\\
+\end{bmatrix}
+\begin{bmatrix}\\
+    W^{[2]}_{11} &amp; 
+    W^{[2]}_{21} \\\\
+    \vdots &amp; \vdots \\\\
+    W^{[2]}_{14} &amp; 
+    W^{[2]}_{24} \\\\
+\end{bmatrix}
+\begin{bmatrix}\\
+    \delta^{[1]}_{11} \\\\
+    \delta^{[1]}_{21} \\\\
+\end{bmatrix}
+$$</div>
+<div class="math">$$
+ = 
+\begin{bmatrix}\\
+    g'(z^{[1]}_{11})W^{[2]}_{11} &amp; 
+    g'(z^{[1]}_{11})W^{[2]}_{21} \\\\
+    \vdots &amp; \vdots \\\\
+    g'(z^{[1]}_{41})W^{[2]}_{14} &amp; 
+    g'(z^{[1]}_{41})W^{[2]}_{24} \\\\
+\end{bmatrix}
+\begin{bmatrix}\\
+    \delta^{[1]}_{11} \\\\
+    \delta^{[1]}_{21} \\\\
+\end{bmatrix}
+$$</div>
+<div class="math">$$
+ = 
+\begin{bmatrix}\\
+    g'(z^{[1]}_{11})W^{[2]}_{11}\delta^{[1]}_{11} + 
+    g'(z^{[1]}_{11})W^{[2]}_{21}\delta^{[1]}_{21} \\\\
+    \vdots &amp; \\\\
+    g'(z^{[1]}_{41})W^{[2]}_{14}\delta^{[1]}_{11} + 
+    g'(z^{[1]}_{41})W^{[2]}_{24}\delta^{[1]}_{21} \\\\
+\end{bmatrix}
+$$</div>
+<div class="math">$$
+ = 
+\begin{bmatrix}\\
+    g'(z^{[1]}_{11})(W^{[2]}_{11}\delta^{[1]}_{11} + 
+    W^{[2]}_{21}\delta^{[1]}_{21}) \\\\
+    \vdots &amp; \\\\
+    g'(z^{[1]}_{41})(W^{[2]}_{14}\delta^{[1]}_{11} + 
+    W^{[2]}_{24}\delta^{[1]}_{21}) \\\\
+\end{bmatrix}
+$$</div>
+<div class="math">$$
+ = 
+\begin{bmatrix}\\
+    W^{[2]}_{11}\delta^{[1]}_{11} + 
+    W^{[2]}_{21}\delta^{[1]}_{12} \\\\
+    \vdots &amp; \\\\
+    W^{[2]}_{14}\delta^{[1]}_{11} + 
+    W^{[2]}_{24}\delta^{[1]}_{12} \\\\
+\end{bmatrix}
+\begin{bmatrix}\\
+    g'(z^{[1]}_{11}) \\\\
+    \vdots &amp; \\\\
+    g'(z^{[1]}_{41}) \\\\
+\end{bmatrix}
+$$</div>
+<div class="math">$$
+ = 
+\begin{bmatrix}\\
+    W^{[2]}_{11}\delta^{[1]}_{11} + 
+    W^{[2]}_{21}\delta^{[1]}_{12} \\\\
+    \vdots &amp; \\\\
+    W^{[2]}_{14}\delta^{[1]}_{11} + 
+    W^{[2]}_{24}\delta^{[1]}_{12} \\\\
+\end{bmatrix}
+* g'(\textbf{z}^{[1]})
+$$</div>
+<div class="math">$$
+ = 
+\begin{bmatrix}\\
+    W^{[2]}_{11} &amp; 
+    W^{[2]}_{21} \\\\
+    \vdots &amp; \vdots \\\\
+    W^{[2]}_{14} &amp; 
+    W^{[2]}_{24} \\\\
+\end{bmatrix}
+\begin{bmatrix}\\
+    \delta^{[1]}_{11} \\\\
+    \delta^{[1]}_{12} \\\\
+\end{bmatrix}
+* g'(\textbf{z}^{[1]})
+$$</div>
+<div class="math">$$
+\boldsymbol{\delta}^{[1]} = 
+\textbf{W}^{[2]T}\boldsymbol{\delta}^{[1]}
+* g'(\textbf{z}^{[1]})
+$$</div>
+<p>Great, now we can use <span class="math">\(\boldsymbol{\delta}^{[1]}\)</span> to calculate the derivative of <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{W}^{[1]}\)</span>.</p>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\textbf{W}^{[1]}}} = 
+\boldsymbol{\delta}^{[1]T}
+\dfrac{\partial{\textbf{z}^{[1]}}}{\partial{\textbf{W}^{[1]}}}
+$$</div>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\textbf{W}^{[1]}}} = 
+\begin{bmatrix}
+\delta^{[1]}_{11} &amp; \delta^{[1]}_{21} &amp; \delta^{[1]}_{31} &amp; \delta^{[1]}_{41}
+\end{bmatrix}
+\begin{bmatrix}
+x_{11} &amp;
+x_{21} &amp; 
+x_{31} &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 \\\\
+0 &amp;
+0 &amp; 
+0 &amp;
+x_{11} &amp;
+x_{21} &amp; 
+x_{31} &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 \\\\
+0 &amp;
+0 &amp; 
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+x_{11} &amp;
+x_{21} &amp; 
+x_{31} &amp;
+0 &amp;
+0 &amp;
+0 \\\\
+0 &amp;
+0 &amp; 
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+0 &amp;
+x_{11} &amp;
+x_{21} &amp; 
+x_{31} &amp; \\\\
+\end{bmatrix}
+$$</div>
+<div class="math">$$
+\dfrac{\partial{J}}{\partial{\textbf{W}^{[1]}}} =
+\begin{bmatrix}
+\delta^{[1]}_{11}x_{11} &amp; 
+\delta^{[1]}_{11}x_{21} &amp;
+\delta^{[1]}_{11}x_{31} &amp;
+\dotsc
+\delta^{[1]}_{41}x_{11} &amp; 
+\delta^{[1]}_{41}x_{21} &amp;
+\delta^{[1]}_{41}x_{31} 
+\end{bmatrix}
+$$</div>
+<p>Which yields a <span class="math">\((1, 12)\)</span> Jacobian matrix. Like before, we need our gradient matrix <span class="math">\(d\textbf{W}^{[1]}\)</span> to have dimensions that match <span class="math">\(\textbf{W}^{[1]}\)</span>. So we will reshape the Jacobian into a <span class="math">\((4,3)\)</span> matrix.</p>
+<div class="math">$$d\textbf{W}^{[1]} = 
+\begin{bmatrix}
+\\
+\delta^{[1]}_{11}x_{11} &amp; 
+\dotsc &amp;
+\delta^{[1]}_{11}x_{31} \\\\
+\vdots &amp; \vdots \\\\
+\delta^{[1]}_{41}x_{11} &amp; 
+\dotsc &amp; 
+\delta^{[1]}_{41}x_{31} \\\\
+\end{bmatrix}
+$$</div>
+<p>And like last time, this breaks apart into two matricies and we get:</p>
+<div class="math">$$d\textbf{W}^{[1]} = 
+\begin{bmatrix}
+\\
+\delta^{[1]}_{11} \\\\
+\delta^{[1]}_{21} \\\\
+\delta^{[1]}_{31} \\\\
+\delta^{[1]}_{41} \\\\
+\end{bmatrix}
+\begin{bmatrix}
+\\
+x_{11} &amp; x_{21} &amp;  x_{31}\\\\
+\end{bmatrix}
+$$</div>
+<p>Which becomes:</p>
+<div class="math">$$d\textbf{W}^{[1]} = \boldsymbol{\delta}^{[1]}\textbf{x}^{T}$$</div>
+<p>Let's now calculate the partial derivative of the loss <span class="math">\(J\)</span> with respect to <span class="math">\(\textbf{b}^{[1]}\)</span>:</p>
+<div class="math">$$\dfrac{\partial J}{\partial{\textbf{b}^{[1]}}} = \dfrac{dJ}{d{\textbf{z}^{[1]}}}
+\dfrac{\partial{\textbf{z}^{[1]}}}{\partial{\textbf{b}^{[1]}}}$$</div>
+<p>We know that:</p>
+<div class="math">$$\dfrac{\partial \textbf{z}^{[1]}}{\partial \textbf{b}^{[1]}} = 
+\begin{bmatrix}
+    \\
+    1 &amp; 0 &amp; 0 &amp; 0 \\\\
+    0 &amp; 1 &amp; 0 &amp; 0 \\\\
+    0 &amp; 0 &amp; 1 &amp; 0 \\\\
+    0 &amp; 0 &amp; 0 &amp; 1 \\\\
+\end{bmatrix}$$</div>
+<p>Which is just the identity matrix. So the partial derivative just simplfies to become:</p>
+<div class="math">$$\dfrac{\partial{J}}{\partial{\textbf{b}^{[1]}}} = \boldsymbol{\delta}^{[1]T}$$</div>
+<p>And the gradient <span class="math">\(d\textbf{b}^{[1]}\)</span> is therefore just the transpose of the Jacobian, or:</p>
+<div class="math">$$
+d\textbf{b}^{[1]} = \boldsymbol{\delta}^{[1]}
+$$</div>
+<p>Which is a <span class="math">\((4,1)\)</span> column vector, and matches the dimensions of <span class="math">\(\textbf{b}^{[1]}\)</span>.</p>
+<p>&nbsp;</p>
+<h2>In Summary</h2>
+<p>Our aim was to calculate the gradients for our cost function <span class="math">\(J\)</span> with respect to each of our parameters that we wanted to update using stochastic gradient descent.</p>
+<div class="math">$$\bigg( d\textbf{W}^{[1]}, d\textbf{b}^{[1]}, d\textbf{W}^{[2]}, d\textbf{b}^{[2]}, 
+d\textbf{W}^{[3]}, db^{[3]} \bigg)$$</div>
+<p>Below is a summary of the results:</p>
+<p>&nbsp;</p>
+<h4>Third Layer</h4>
+<div class="math">$$d\textbf{W}^{[3]} =  \delta^{[3]}a^{[2]T}$$</div>
+<div class="math">$$d b^{[3]} = 
+\delta^{[3]}$$</div>
+<div class="math">$$\boldsymbol{\delta}^{[3]} = a^{[3]} - y$$</div>
+<p>&nbsp;</p>
+<h4>Second Layer</h4>
+<div class="math">$$d\textbf{W}^{[2]} = \boldsymbol{\delta}^{[2]}\textbf{a}^{[1]T}$$</div>
+<div class="math">$$d\textbf{b}^{[2]} = \boldsymbol{\delta}^{[2]}$$</div>
+<div class="math">$$
+\boldsymbol{\delta}^{[2]}= 
+\textbf{W}^{[3]T}
+\delta^{[3]}
+*
+g'(\textbf{z}^{[2]})
+$$</div>
+<p>&nbsp;</p>
+<h4>First Layer</h4>
+<div class="math">$$d\textbf{W}^{[1]} = \boldsymbol{\delta}^{[1]}\textbf{x}^{T}$$</div>
+<div class="math">$$d\textbf{b}^{[1]} = \boldsymbol{\delta}^{[1]}$$</div>
+<div class="math">$$
+\boldsymbol{\delta}^{[1]}= 
+\textbf{W}^{[2]T}
+\delta^{[2]}
+*
+g'(\textbf{z}^{[1]})
+$$</div>
+<p>So all that work for a set of simple, predictable equations. Yes, and I think most people will just apply these equations when implementing a neural network in numpy. Or forgo manually architecting backpropagation and gradient descent and using a useful, automatic package like tensorflow. Which is unfortunate, because despite the arduous process of painstakingly producing these equations, I think I've learned a lot by doing it and I hope you, the reader have as well. Thank you!</p>
+<script type="text/javascript">if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'black ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+        </div>
+
+        <div class="meta">
+            <div>
+                    <a href="http://localhost:8000/tag/neural-networks.html" class="tag">neural networks</a>
+                    <a href="http://localhost:8000/tag/machine-learning.html" class="tag">machine learning</a>
+            </div>
+        </div>
+    </article>
+
+
+</div>
+
+<style type="text/css">
+{
+    max-width: 700px;
+}
+
+.text_cell .prompt {
+    display: none;
+}
+
+div.cell {
+    padding: 0;
+}
+
+div.text_cell_render {
+    padding: 0;
+}
+
+div.prompt {
+    font-size: 13px;
+}
+
+div.input_prompt {
+    padding: .7em 0.2em;
+}
+
+div.output_prompt {
+    padding: .4em .2em;
+}
+
+div.input_area {
+    margin: .2em 0.4em;
+    max-width: 580px;
+}
+
+table.dataframe {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    line-height: 20px;
+}
+
+table.dataframe th, td {
+    padding: 4px;
+    text-align: left;
+}
+
+pre code {
+    background-color: inherit;
+}</style>
+
+        </div>
+<!--
+    <footer>
+      <p>
+        © 2012-2017 Jason Osajima, license <a href=""> </a>
+        unless otherwise noted.
+        Generated by <a href= "http://docs.getpelican.com/">Pelican</a>.
+      </p>
+    </footer>
+-->
+    </body>
+</html>

@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="author" content="Jason Osajima">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>The Math behind Neural Networks - Forward Propagation | Jason {osa-jima}</title>
+
+	<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+	<link rel="icon" href="/favicon.ico" type="image/x-icon">
+        <link rel="alternate" type="application/atom+xml" title="Jason {osa-jima} blog atom feed" href="/feeds/all.atom.xml" />
+        <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700' rel='stylesheet' type='text/css'>
+
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" type="text/css" href="/theme/css/icons.css"/>
+        <style>.highlight .hll { background-color: #ffffcc }
+.highlight .c { color: #60a0b0; font-style: italic } /* Comment */
+.highlight .err { border: 1px solid #FF0000 } /* Error */
+.highlight .k { color: #007020; font-weight: bold } /* Keyword */
+.highlight .o { color: #666666 } /* Operator */
+.highlight .cm { color: #60a0b0; font-style: italic } /* Comment.Multiline */
+.highlight .cp { color: #007020 } /* Comment.Preproc */
+.highlight .c1 { color: #60a0b0; font-style: italic } /* Comment.Single */
+.highlight .cs { color: #60a0b0; background-color: #fff0f0 } /* Comment.Special */
+.highlight .gd { color: #A00000 } /* Generic.Deleted */
+.highlight .ge { font-style: italic } /* Generic.Emph */
+.highlight .gr { color: #FF0000 } /* Generic.Error */
+.highlight .gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.highlight .gi { color: #00A000 } /* Generic.Inserted */
+.highlight .go { color: #808080 } /* Generic.Output */
+.highlight .gp { color: #c65d09; font-weight: bold } /* Generic.Prompt */
+.highlight .gs { font-weight: bold } /* Generic.Strong */
+.highlight .gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.highlight .gt { color: #0040D0 } /* Generic.Traceback */
+.highlight .kc { color: #007020; font-weight: bold } /* Keyword.Constant */
+.highlight .kd { color: #007020; font-weight: bold } /* Keyword.Declaration */
+.highlight .kn { color: #007020; font-weight: bold } /* Keyword.Namespace */
+.highlight .kp { color: #007020 } /* Keyword.Pseudo */
+.highlight .kr { color: #007020; font-weight: bold } /* Keyword.Reserved */
+.highlight .kt { color: #902000 } /* Keyword.Type */
+.highlight .m { color: #40a070 } /* Literal.Number */
+.highlight .s { color: #4070a0 } /* Literal.String */
+.highlight .na { color: #4070a0 } /* Name.Attribute */
+.highlight .nb { color: #007020 } /* Name.Builtin */
+.highlight .nc { color: #0e84b5; font-weight: bold } /* Name.Class */
+.highlight .no { color: #60add5 } /* Name.Constant */
+.highlight .nd { color: #555555; font-weight: bold } /* Name.Decorator */
+.highlight .ni { color: #d55537; font-weight: bold } /* Name.Entity */
+.highlight .ne { color: #007020 } /* Name.Exception */
+.highlight .nf { color: #06287e } /* Name.Function */
+.highlight .nl { color: #002070; font-weight: bold } /* Name.Label */
+.highlight .nn { color: #0e84b5; font-weight: bold } /* Name.Namespace */
+.highlight .nt { color: #062873; font-weight: bold } /* Name.Tag */
+.highlight .nv { color: #bb60d5 } /* Name.Variable */
+.highlight .ow { color: #007020; font-weight: bold } /* Operator.Word */
+.highlight .w { color: #bbbbbb } /* Text.Whitespace */
+.highlight .mf { color: #40a070 } /* Literal.Number.Float */
+.highlight .mh { color: #40a070 } /* Literal.Number.Hex */
+.highlight .mi { color: #40a070 } /* Literal.Number.Integer */
+.highlight .mo { color: #40a070 } /* Literal.Number.Oct */
+.highlight .sb { color: #4070a0 } /* Literal.String.Backtick */
+.highlight .sc { color: #4070a0 } /* Literal.String.Char */
+.highlight .sd { color: #4070a0; font-style: italic } /* Literal.String.Doc */
+.highlight .s2 { color: #4070a0 } /* Literal.String.Double */
+.highlight .se { color: #4070a0; font-weight: bold } /* Literal.String.Escape */
+.highlight .sh { color: #4070a0 } /* Literal.String.Heredoc */
+.highlight .si { color: #70a0d0; font-style: italic } /* Literal.String.Interpol */
+.highlight .sx { color: #c65d09 } /* Literal.String.Other */
+.highlight .sr { color: #235388 } /* Literal.String.Regex */
+.highlight .s1 { color: #4070a0 } /* Literal.String.Single */
+.highlight .ss { color: #517918 } /* Literal.String.Symbol */
+.highlight .bp { color: #007020 } /* Name.Builtin.Pseudo */
+.highlight .vc { color: #bb60d5 } /* Name.Variable.Class */
+.highlight .vg { color: #bb60d5 } /* Name.Variable.Global */
+.highlight .vi { color: #bb60d5 } /* Name.Variable.Instance */
+.highlight .il { color: #40a070 } /* Literal.Number.Integer.Long */</style>
+        <style>body {
+  margin: 0;
+  padding: 0;
+  font: 15px 'Source Sans Pro', sans-serif;
+  line-height: 1.6em;
+  color: #222;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: #007EE5;
+  text-decoration: none;
+}
+a:hover {
+  color: #007EE5;
+  text-decoration: none;
+}
+header.main-header {
+  background: none repeat scroll 0% 0% #205F29;
+  margin-bottom: 0px;
+}
+header.main-header a {
+  color: #fff;
+}
+header.main-header .container {
+  max-width: 1000px;
+}
+header.main-header .container nav a:hover {
+  background-color: #5C881C;
+}
+article {
+  margin: 0;
+}
+article header.about {
+  margin-bottom: 0px;
+  padding-bottom: 0px;
+}
+article header {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+}
+article header h1 {
+  margin-bottom: 2px;
+  font-weight: 700;
+  color: #000;
+}
+article header time {
+  color: #9E9E9E;
+  font-size: 0.85em;
+  float: right;
+}
+article header time.left {
+  color: #9E9E9E;
+  font-size: 0.85em;
+  float: left;
+}
+article div.social-links ul {
+  padding: 0px;
+}
+article div.social-links li {
+  display: inline;
+  font-size: 20px;
+}
+article div.social-links li a {
+  color: #000;
+  padding: 10px;
+}
+article div.social-links li a:hover {
+  color: #666;
+  text-decoration: none;
+}
+article p {
+  font-size: 16px;
+  margin-bottom: 20px;
+  line-height: 1.6em;
+}
+article p.note {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 0.533em 0.733em;
+}
+article p.update {
+  background-color: #FEEFB3;
+  border: 1px solid #e6e68a;
+  padding: 0.533em 0.733em;
+}
+article p.alert {
+  background-color: #ffe2e2;
+  border: 1px solid #ffb2b2;
+  padding: 0.533em 0.733em;
+}
+article ul,
+article ol {
+  margin-top: 0px;
+  margin-bottom: 25px;
+}
+article li {
+  font-size: 16px;
+  line-height: 1.6em;
+}
+article a:hover {
+  text-decoration: underline;
+}
+article blockquote {
+  border-left: 2px solid #c7c7cc;
+  color: #666;
+  margin: 30px 0;
+  padding: 0 0 0 25px;
+}
+article img {
+  max-width: 100%;
+}
+article code {
+  color: #333;
+  background-color: #EEE;
+  border-radius: 0;
+  font-size: 13px;
+}
+article .meta {
+  font-size: 11px;
+}
+article .meta a:hover {
+  text-decoration: none;
+}
+article .meta div {
+  margin-bottom: 20px;
+  display: block;
+}
+article .meta a.tag {
+  margin: 0 10px 10px 0;
+  padding: 1px 12px;
+  display: inline-block;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.05);
+}
+article .meta a.tag:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+article .meta a.read_more,
+article .meta a.comments_btn {
+  font-size: 14px;
+  font-weight: 800;
+  padding: 10px 20px;
+  color: #205F29;
+  background: #FFF;
+  border: 1px solid #205F29;
+}
+article .meta a.read_more:hover,
+article .meta a.comments_btn:hover {
+  color: #FFF;
+  background: #5C881C;
+}
+.index {
+  max-width: 700px;
+}
+.index article header h2 {
+  font-size: 36px;
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+.index article header h2 a {
+  color: #000;
+}
+.index article header h2 a:hover {
+  color: #007EE5;
+  text-decoration: none;
+}
+.index .separator {
+  padding: 40px 0 0 0;
+  margin: 0 0 40px 0;
+  height: 10px;
+  border-bottom: solid 1px #CCC;
+}
+.index .pagination {
+  display: block;
+  margin-bottom: 100px;
+}
+.index .pagination .left {
+  text-align: right;
+}
+.index .pagination .right {
+  text-align: left;
+}
+.index .pagination a {
+  display: inline-block;
+  border: 2px solid #5C881C;
+  margin: 0 5px;
+  padding: 8px 20px;
+  font-weight: bold;
+  color: #5C881C;
+}
+.index .pagination a:hover {
+  color: #FFF;
+  background: #5C881C;
+}
+.post {
+  max-width: 700px;
+}
+.post h2:before {
+  content: "# ";
+  font-weight: bold;
+  color: #DDD;
+}
+.post h3:before {
+  content: "## ";
+  font-weight: bold;
+  color: #DDD;
+}
+.post h4:before {
+  content: "### ";
+  font-weight: bold;
+  color: #DDD;
+}
+.post article .meta {
+  margin: 50px 0 100px;
+}
+.list {
+  max-width: 700px;
+}
+.list ul.double-list {
+  margin: 0 auto 60px;
+  padding: 0;
+  list-style-type: none;
+}
+.list ul.double-list li {
+  padding: 5px 0;
+}
+.list ul.double-list li h2 {
+  font-size: 1em;
+  display: inline;
+  font-weight: normal;
+}
+.list ul.double-list li span {
+  font-family: sans-serif;
+  text-transform: uppercase;
+  text-align: right;
+  float: right;
+  padding-top: 3px;
+  font-size: 12px;
+  color: #999;
+}
+.full-width-content {
+  padding-top: 10px;
+  padding-left: 0px;
+  padding-right: 0px;
+  margin-left: -20px;
+  margin-right: -20px;
+}
+.col-xs-1,
+.col-sm-1,
+.col-md-1,
+.col-lg-1,
+.col-xs-2,
+.col-sm-2,
+.col-md-2,
+.col-lg-2,
+.col-xs-3,
+.col-sm-3,
+.col-md-3,
+.col-lg-3,
+.col-xs-4,
+.col-sm-4,
+.col-md-4,
+.col-lg-4,
+.col-xs-5,
+.col-sm-5,
+.col-md-5,
+.col-lg-5,
+.col-xs-6,
+.col-sm-6,
+.col-md-6,
+.col-lg-6,
+.col-xs-7,
+.col-sm-7,
+.col-md-7,
+.col-lg-7,
+.col-xs-8,
+.col-sm-8,
+.col-md-8,
+.col-lg-8,
+.col-xs-9,
+.col-sm-9,
+.col-md-9,
+.col-lg-9,
+.col-xs-10,
+.col-sm-10,
+.col-md-10,
+.col-lg-10,
+.col-xs-11,
+.col-sm-11,
+.col-md-11,
+.col-lg-11,
+.col-xs-12,
+.col-sm-12,
+.col-md-12,
+.col-lg-12 {
+  padding-right: 0px;
+  padding-left: 0px;
+}</style>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+
+    </head>
+
+    <body>
+        <header class="navbar navbar-inverse bs-docs-nav">
+            <div class="container-fluid">
+                <div class="navbar-header">
+		  <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#theNavbar">
+		    <span class="icon-bar"></span>
+		    <span class="icon-bar"></span>
+		    <span class="icon-bar"></span> 
+		  </button>
+                  <a class="navbar-brand" href="/" title="Home" class="title">Jason {osa-jima}</a>
+                </div>
+                <nav class="collapse navbar-collapse bs-navbar-collapse" role="navigation" id="theNavbar">
+		    <ul class="nav navbar-nav navbar-right">
+                            <li><a href="/pages/about.html" title="About">About</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+
+        <div id="wrap">
+<div class="container post">
+    <article>
+        <header>
+            <h1>The Math behind Neural Networks - Forward Propagation</h1>
+            <time datetime="article.date.isoformat()" pubdate>Wed 18 July 2018</time>
+        </header>
+
+        <div class="article_content">
+            <p><em>This is part one in a two-part series on the math behind neural networks. Part one is about forward propagation. Part two is about backpropagation and can be found <a href="/backprop">here</a>.</em></p>
+
+
+<p>When I started learning about neural networks, I found several articles and courses that guided you through their implementation in <code>numpy</code>. But when I started my research, I couldn't see past these basic implementations. In other words, I couldn't understand the concepts in research papers and I couldn't think of any interesting research ideas.</p>
+<p>In order to go forward I had to go backwards. I had to relearn many fundamental concepts. The two concepts that are probably the most fundamental to neural networks are forward propagation and backpropagation. I decided to write two blog posts explaining in depth how these two concepts work. My hope is that by the end of this two part series you will have a deeper understanding of the fundamental underpinnings of both.</p>
+
+
+<p>I found three resources helpful. The first is the <a href="http://cs231n.github.io/neural-networks-1/">Neural Network module</a> in the Stanford CS231n Convolutional Neural Networks for Visual Recognition course. The course materials are written by <a href="http://karpathy.github.io">Andrej Karpathy</a>. I enjoy reading Karpathy's work. He has a great conversational tone when describing concepts and it feels like you are traveling together on a roadtrip towards a better understanding of deep learning.</p>
+<p>The second resource I would recommend is the <a href="http://www.deeplearningbook.org">Deep Learning Book</a> written by Ian Goodfellow, Yoshua Bengio and Aaron Courville. It is an exahaustive resource of all the facts you will need to understand deep learning. It's on my to-do list to read and take notes on the entire book. In the meantime, I have used it frequently to learn about specific concepts that I wanted more information about.</p>
+<p>The third is Andrew Ng's <a href="https://www.coursera.org/specializations/deep-learning">Deep Learning Specialization</a>, available on Coursera. Ng has a special talent for explaining difficult ideas in simple ways. His ability to do this comes from his insistence on clear notation. He doesn't allow any notational detail to be lost. </p>
+<p>I recommend starting with the Stanford course and then moving on to Andrew Ng's course, all the while using the Deep Learning Book as a reference.</p>
+<p>&nbsp;</p>
+<h3>What is the problem we are trying to solve?</h3>
+<p>I probably don't have to convince you that neural networks have shown success in several <a href="http://www.wildml.com/2017/12/ai-and-deep-learning-in-2017-a-year-in-review/">domains</a>. In our example we will be focused on a binary classification problem.</p>
+<p>A binary classifier is a supervised learning algorithm. We are given an input and our task is to predict which one of two classes the input belongs to. Each training example we use can be represented as <span class="math">\((\textbf{x}, y)\)</span>, where <span class="math">\(\textbf{x} \in \mathbb{R}^{n_x}\)</span> and <span class="math">\(y \in (1, 0)\)</span>. If you aren't familiar with this notation, it just means that <span class="math">\(\textbf{x}\)</span> is a <span class="math">\(n_x\)</span>-dimensional feature vector and <span class="math">\(y\)</span> can take on values <span class="math">\(1\)</span> or <span class="math">\(0\)</span>.  Let's say we are trying to predict whether a person was happy (<span class="math">\(0\)</span>) or sad (<span class="math">\(1\)</span>) using features (1) how much sleep the person gets (2) how many times the person exercises in a week and (3) how many times the person hangs out with friends. Since we have three features, <span class="math">\(n_x = 3\)</span>, and each of our <span class="math">\(\textbf{x}\)</span> training examples would be a <span class="math">\(3\)</span>-dimensional vector. The values for each of the features can be represented with a subscript. So, <span class="math">\(x_1\)</span> would be the value for how much sleep a person gets, <span class="math">\(x_2\)</span> would be the value for how much a person exercises in a week, etc.</p>
+<blockquote>
+<p>A quick note on notation: For these blog posts, any time we define a vector or matrix, we will bold it. Anytime we define a scalar, we will keep it normal.</p>
+</blockquote>
+<p><span class="math">\(m\)</span> is equal to the number of training examples we have. So we end up with m pairs of training examples, and it can be written in this form:</p>
+<div class="math">$${(\textbf{x}^{(1)}, y^{(1)}), (\textbf{x}^{(2)}, y^{(2)}), (\textbf{x}^{(3)}, y^{(3)}),\ ..., (\textbf{x}^{(m)}, y^{(m)})}$$</div>
+<p>Notice that we are using the superscript <span class="math">\((i)\)</span> to denote the ith training example. So the third training example is <span class="math">\((\textbf{x}^{(3)}, y^{(3)})\)</span>. Next, we can take all of these <span class="math">\(\textbf{x}^{(i)}\)</span> vectors and line them up to create a matrix like so:</p>
+<div class="math">$$\textbf{X} = \begin{bmatrix}
+    | &amp; | &amp; ... &amp; | \\
+   \textbf{x}^{(2)} &amp; \textbf{x}^{(2)} &amp; ... &amp; \textbf{x}^{(m)} \\
+   | &amp; | &amp; ... &amp; |
+\end{bmatrix}$$</div>
+<p>The shape of <span class="math">\(\textbf{X}\)</span> is <span class="math">\((n_x, m)\)</span>, or <span class="math">\(X \in \mathbb{R}^{n_x, m}\)</span>. Each row are the values for a given feature, and each column is a training example.</p>
+<p>Similarly, we can group all of the output values <span class="math">\(y\)</span> for each training example into a vector:</p>
+<div class="math">$$\textbf{Y} = 
+\begin{bmatrix}
+y^{(1)} &amp;
+y^{(2)} &amp;
+... &amp;
+y^{(m)}
+\end{bmatrix}$$</div>
+<p>The shape of <span class="math">\(\textbf{Y}\)</span> is <span class="math">\((1, m)\)</span> or <span class="math">\(\textbf{Y} \in \mathbb{R}^{1, m}\)</span>.
+&nbsp;</p>
+<h2>Defining the Architecture</h2>
+<p>For the two blog posts, I decided to use a neural network with three layers. A ReLU activation function connects the input and two hidden layers and a sigmoid function connects the final hidden layer and the output layer.</p>
+<p>There are a lot of great resources illustrating how forward propagation and backpropagation work for a one hidden-layer neural network or logistic regression, but I think the sweet spot for understanding both concepts occurs when you use a neural network with two hidden layers. So our example will focus on a three-layer hidden network. Here's what our lovely neural network looks like without labels.</p>
+<p><img src="/images/nn_1.png" title="[nn_1]" alt="[nn_1]"></p>
+<p><em>Diagram of a Neural Network with Two Hidden Layers</em></p>
+<p>The first question that may come to mind is what does the output of the neural network represent? The input of a neural network is a feature vector from a training example (<span class="math">\(\textbf{x}^{(i)}\)</span>). The output is our prediction <span class="math">\(\hat{y}\)</span>. What does <span class="math">\(\hat{y}\)</span> represent?</p>
+<p>Given a feature vector <span class="math">\(\textbf{x}\)</span>, we want to predict whether the training example is a 1 or 0. We can think of our prediction as the probability that <span class="math">\(y\)</span> is equal to 1 given the feature vector <span class="math">\(\textbf{x}\)</span> for our training example, or <span class="math">\(\hat{y} = P(y=1 | \textbf{x})\)</span>.</p>
+<p><img src="/images/nn_2.png" title="[nn_2]" alt="[nn_2]"></p>
+<p><em>Diagram with input <span class="math">\(\textbf{x}^{(i)}\)</span> and output <span class="math">\(\hat{y}^{(i)}\)</span> for a given training example <span class="math">\(i\)</span>.</em></p>
+<p>We define the first layer of the neural network as a feature vector from a given training example (<span class="math">\(i\)</span>). In the diagram, each entry in the feature vector represents a scalar value. For example, <span class="math">\(x^{(i)}_1\)</span> is the value for the 1st feature for the ith training example.</p>
+<p>Notice that the last layer of our neural network contains <span class="math">\(\hat{y}^{(i)}\)</span>, which is our prediction for what we think the label should be for the ith training example.</p>
+<p>Notice that our neural network has 4 layers of nodes, but we said in the beginning that our neural network has 2 hidden layers. What's the reasoning behind this? We treat our output and input layers as layers, so technically <span class="math">\(x^{(i)} = a^{(i)[0]}\)</span> and <span class="math">\(a^{(i)[3]} = \hat{y}^{(i)}\)</span>. We define <span class="math">\(a\)</span> as a vector for the given layer, and the superscript <span class="math">\([j]\)</span> tells us the layer number, so the input layer is the 0th layer and the output layer is the 3rd layer. Given that, how do we describe the hidden layers in between?</p>
+<p><img src="/images/nn_3.png" title="[nn_3]" alt="[nn_3]"></p>
+<p><em>Diagram with hidden layers.</em></p>
+<p>In our diagram, we now have hidden layers <span class="math">\(\textbf{a}^{(i)[1]}\)</span> and <span class="math">\(\textbf{a}^{(i)[2]}\)</span>, and output layer <span class="math">\(\textbf{a}^{(i)[3]} = \hat{y}^{(i)}\)</span> represented and our 3 layer hidden network is defined in our diagram. This confused me from the beginning because it's a 3-layer Neural Network with 2 hidden layers. So the number of hidden layers is 1 - number of layers, since we count the output as a layer.</p>
+<p>We can also vectorize our hidden layers the same way we vectorized our input (<span class="math">\(\textbf{X}\)</span>) and output (<span class="math">\(\hat{\textbf{Y}}\)</span>) by lining up the vectors for a hidden layer <span class="math">\(j\)</span>:</p>
+<div class="math">$$\textbf{A}^{[j]} = \begin{bmatrix}
+    | &amp; | &amp; ... &amp; | \\
+   \textbf{a}^{(1)[j]} &amp; \textbf{a}^{(2)[j]} &amp; ... &amp; \textbf{a}^{(m)[j]} \\
+   | &amp; | &amp; ... &amp; |
+\end{bmatrix}$$</div>
+<p>This matrix <span class="math">\(\textbf{A}^{[j]}\)</span> becomes a <span class="math">\(n^{\textbf{a}^{[j]}}\)</span> by <span class="math">\(m\)</span> matrix, where <span class="math">\(n^{a^{[j]}} =\)</span> # of hidden units (or nodes) for layer j and <span class="math">\(m\)</span> is the number of training examples. Relating this back to our diagram, if <span class="math">\(j = 1\)</span>, <span class="math">\(n^{a^{[1]}} = 4\)</span> and <span class="math">\(\textbf{A}^{[1]}\)</span> has the shape  <span class="math">\((4,m)\)</span></p>
+<p>What's interesting about the diagram (and something I didn't understand at first) is that it doesn't show any of the parameters for the model. The parameters are actually represented by the edges of the model. I'll talk about this next.</p>
+<p>&nbsp;</p>
+<h2>Going from layer to layer</h2>
+<p>Let's break down what's happening when we calculate <span class="math">\(a_1^{(i)[1]}\)</span>, which is the first entry for the first hidden layer for the <span class="math">\(ith\)</span> training example.</p>
+<p><img src="/images/nn_4.png" title="[nn_4]" alt="[nn_4]"></p>
+<p>From the diagram, you can see that the input consists of all the entries from the previous layer (in this case the input layer from the <span class="math">\(ith\)</span> training example <span class="math">\(\textbf{x}^{(i)}\)</span> and the output is the entry for the first hidden layer <span class="math">\(a_1^{(i)[1]}\)</span>.</p>
+<p><img src="/images/nn_5.png" title="[nn_5]" alt="[nn_5]"></p>
+<p>In order to calculate <span class="math">\(a_1^{(i)[1]}\)</span>, we take each entry from <span class="math">\(\textbf{x}^{(i)}\)</span> and multiply it by a weight. The notation can be a little tricky, so let's break that down. Let's say we have <span class="math">\(W^{[1]}_{13}\)</span>. We multiply this guy by the third entry in <span class="math">\(\textbf{x}\)</span>, or <span class="math">\(x^{(i)}_1\)</span> to get the first entry in the <span class="math">\(1st\)</span> layer.</p>
+<p>Let's breakdown the weights corresponding to <span class="math">\(a_1^{(i)[1]}\)</span> in our diagram. <span class="math">\(\textbf{W}^{[1]}\)</span> is a <span class="math">\((4, 3)\)</span> matrix:</p>
+<div class="math">$$
+\textbf{W}^{[1]} = 
+\begin{bmatrix}
+W^{[1]}_{11} &amp; 
+W^{[1]}_{12} &amp;
+W^{[1]}_{13} \\\\
+W^{[1]}_{21} &amp; 
+W^{[1]}_{22} &amp;
+W^{[1]}_{23} \\\\
+W^{[1]}_{31} &amp; 
+W^{[1]}_{32} &amp;
+W^{[1]}_{33} \\\\
+W^{[1]}_{41} &amp; 
+W^{[1]}_{42} &amp;
+W^{[1]}_{43}
+\end{bmatrix}
+$$</div>
+<p>The weights that we use to calculate <span class="math">\(a_1^{(i)[1]}\)</span> are the weights in the first row, or <span class="math">\(\textbf{W}^{[1]}_{1-}\)</span>. <span class="math">\(\textbf{W}^{[1]}_{1-}\)</span> is a <span class="math">\((1, 3)\)</span> row vector:</p>
+<div class="math">$$
+\textbf{W}^{[1]}_{1-} = 
+\begin{bmatrix}
+W^{[1]}_{11} &amp; 
+W^{[1]}_{12} &amp;
+W^{[1]}_{13}
+\end{bmatrix}
+$$</div>
+<p>We can then multiply this vector by <span class="math">\(\textbf{x}^{(i)}\)</span> and we get a nicer, compact representation:</p>
+<p><img src="/images/nn_6.png" title="[nn_6]" alt="[nn_6]"></p>
+<p>Note that we add a bias <span class="math">\(b^{[1]}_{1}\)</span> to <span class="math">\(\textbf{W}^{[1]}_{1-}\textbf{x}^{(i)}\)</span>. The bias are other parameters besides the weights that our model learns. Why do we add a bias? In order to answer that, let's talk about our activation function <span class="math">\(g()\)</span>.</p>
+<p>Different neural network architectures make different choices for activation functions, but in our example to keep it simple we will use a rectified linear unit, or ReLU function.</p>
+<p>The ReLU function is defined as the following:</p>
+<div class="math">$$
+g(z) = \begin{cases}
+   z &amp;\text{if } z &gt; 0  \\
+   0 &amp;\text{otherwise}
+\end{cases}
+$$</div>
+<p>What is the role of activation functions in Neural Networks? Activation functions introduce non-linearity into the neural network. Without activation functions, neural networks would simplify to linear functions. Let's see how that works with respect to our example. If we simplified our neural network by taking out the bias terms and activation functions, the neural network becomes:</p>
+<div class="math">$$\hat{y}^{(i)} = \textbf{W}^{[2]}\textbf{W}^{[1]}\textbf{A}^{(i)[0]}$$</div>
+<p>Notice that if we multiply a matrix of weights (<span class="math">\(\textbf{W}^{[2]}\)</span>) by another matrix of weights (<span class="math">\(\textbf{W}^{[1]}\)</span>), we get one matrix of weights (<span class="math">\(\textbf{W} = \textbf{W}^{[2]}\textbf{W}^{[1]}\)</span>). So our example simplifies to a linear function:</p>
+<div class="math">$$\hat{y}^{(i)} = \textbf{W}\textbf{A}^{(i)[0]}$$</div>
+<p>Now back to our discussion about the bias term. We add a bias term in order to shift our activation function (in our case, the ReLU) to the left or right, which is usually important for learning because it makes the model more flexible.</p>
+<p>&nbsp;</p>
+<h2>Forward propagation in a 3-layer Network</h2>
+<p>Now that we discussed some of the elements of a 3-layer network, let's (finally) introduce the concept of forward propagation. </p>
+<p>Forward propagation is basically the process of taking some feature vector <span class="math">\(\textbf{x}^{(i)}\)</span> and getting an output <span class="math">\(\hat{y}^{(i)}\)</span>. Let's breakdown what's happening in our example.</p>
+<p><img src="/images/nn_8.png" title="[nn_8]" alt="[nn_8]"></p>
+<p>As you can see, we take a (3 x 1) training example <span class="math">\(\textbf{x}^{(i)}\)</span>, get the (4 x 1) activations from the first hidden layer <span class="math">\(\textbf{a}^{(i)[1]}\)</span>. Next, we get the (1 x 2) activations from the second hidden layer <span class="math">\(\textbf{a}^{(i)[2]}\)</span> and the final (1 x 1) output <span class="math">\(\hat{y}^{(i)}\)</span>. As we mentioned earlier, <span class="math">\(\hat{y}^{(i)}\)</span> is the probability that <span class="math">\(y^{(i)}\)</span> is of the positive class given the information we know in the form of <span class="math">\(\textbf{x}^{(i)}\)</span>, or <span class="math">\(\hat{y}^{(i)} = P(y^{(i)} = 1 | x^{(i)})\)</span>. In summary, forward propagation looks like this:</p>
+<div class="math">$$\textbf{x}^{(i)} \rightarrow \textbf{a}^{(i)[1]} \rightarrow \textbf{a}^{(i)[2]} \rightarrow \hat{y}^{(i)}$$</div>
+<p>Next, let's discuss the inner-workings of each of these transitions.</p>
+<p>&nbsp;</p>
+<h3>Input <span class="math">\(\rightarrow\)</span> 1st Hidden Layer (<span class="math">\(\textbf{x}^{(i)} \rightarrow \textbf{a}^{(i)[1]}\)</span>)</h3>
+<p>First, what's happening when we transition from our vector of features for the first training example <span class="math">\(i\)</span> to the activations from our first hidden layer. We start by multiplying <span class="math">\(\textbf{x}^{(i)}\)</span> by the weights and bias of the first hidden layer, <span class="math">\(\textbf{W}^{[1]}\)</span> and <span class="math">\(\textbf{b}^{[1]}\)</span> to get <span class="math">\(\textbf{z}^{(i)[1]}\)</span>. People sometimes call <span class="math">\(\textbf{z}^{(i)[1]}\)</span> the activity of the hidden layer 1 for training example <span class="math">\(i\)</span>.</p>
+<div class="math">$$\textbf{z}^{(i)[1]} = \textbf{W}^{[1]}\textbf{x}^{(i)} + \textbf{b}^{[1]}$$</div>
+<p>So we start by multiplying <span class="math">\(\textbf{x}^{(i)}\)</span> by <span class="math">\(\textbf{W}^{[1]}\)</span>. <span class="math">\(\textbf{x}^{(i)}\)</span> is a (3 x 1) matrix, and <span class="math">\(\textbf{W}^{[1]}\)</span> is a (4 x 3) matrix. We then add the bias, <span class="math">\(\textbf{b}^{[1]}\)</span>. The dimensions of the bias <span class="math">\(\textbf{b}^{[1]}\)</span> match the dimensions of <span class="math">\(\textbf{z}^{(i)[1]}\)</span> which are (4, 1). Once we get the activity matrix <span class="math">\(\textbf{z}^{(i)[1]}\)</span>, we apply the activation function to each element in <span class="math">\(\textbf{z}^{(i)[1]}\)</span>. Recall that the activation function that we chose is ReLU, which we defined as:</p>
+<div class="math">$$
+g(z) = \begin{cases}
+   x &amp;\text{if } z &gt; 0  \\
+   0 &amp;\text{otherwise}
+\end{cases}
+$$</div>
+<p>So we get:</p>
+<div class="math">$$\textbf{a}^{(i)[1]} = g(\textbf{z}^{(i)[1]})$$</div>
+<p>Which just indicates that the ReLU function <span class="math">\(g()\)</span> is applied elementwise to <span class="math">\(\textbf{z}^{(i)[1]}\)</span> to get <span class="math">\(\textbf{a}^{(i)[1]}\)</span>.</p>
+<p><span class="math">\(\textbf{a}^{(i)[1]}\)</span> has the same dimensions as <span class="math">\(\textbf{z}^{(i)[1]}\)</span>, so it's (4,1).</p>
+<p>&nbsp;</p>
+<h3>1st Hidden Layer <span class="math">\(\rightarrow\)</span> 2nd Hidden Layer (<span class="math">\(\textbf{a}^{(i)[1]} \rightarrow \textbf{a}^{(i)[2]}\)</span>)</h3>
+<p>This section is going to be almost identical to the previous section. We start by multiplying <span class="math">\(\textbf{a}^{(i)[1]}\)</span> by <span class="math">\(\textbf{W}^{[2]}\)</span>. <span class="math">\(\textbf{a}^{(i)[1]}\)</span> is a (4 x 1) matrix, and <span class="math">\(\textbf{W}^{[2]}\)</span> is a (2 x 4) matrix. We then add the bias, <span class="math">\(\textbf{b}^{[2]}\)</span>. The dimensions of the bias <span class="math">\(\textbf{b}^{[2]}\)</span> match the dimensions of <span class="math">\(\textbf{z}^{(i)[2]}\)</span> which are (2, 1). Once we get the activity matrix <span class="math">\(\textbf{z}^{(i)[2]}\)</span>, we apply the ReLU activation function to each element in <span class="math">\(\textbf{z}^{(i)[2]}\)</span>. So we get:</p>
+<div class="math">$$\textbf{a}^{(i)[2]} = g(\textbf{z}^{(i)[2]})$$</div>
+<p><span class="math">\(\textbf{a}^{(i)[2]}\)</span> has the same dimensions as <span class="math">\(\textbf{z}^{(i)[2]}\)</span>, so it's (2,1).</p>
+<p>&nbsp;</p>
+<h3>2nd Hidden Layer <span class="math">\(\rightarrow\)</span> Output (<span class="math">\(\textbf{a}^{(i)[2]} \rightarrow \hat{y}^{(i)}\)</span>)</h3>
+<p>So now we have <span class="math">\(\textbf{a}^{(i)[2]}\)</span>. We again start by multiplying <span class="math">\(\textbf{a}^{(i)[2]}\)</span> by <span class="math">\(\textbf{W}^{[3]}\)</span>. <span class="math">\(\textbf{a}^{(i)[2]}\)</span> is a (2 x 1) matrix, and <span class="math">\(\textbf{W}^{[3]}\)</span> is a (1 x 2) matrix. We then add the bias, <span class="math">\(b^{[3]}\)</span>. The dimensions of the bias <span class="math">\(b^{[3]}\)</span> match the dimensions of <span class="math">\(z^{(i)[3]}\)</span> which are (1, 1). Once we get the activity matrix <span class="math">\(z^{(i)[3]}\)</span>, we apply the activation function to each element in <span class="math">\(z^{(i)[3]}\)</span>. Since this is the final layer of our neural network, we will use a sigmoid activation function:</p>
+<div class="math">$$
+\sigma(z) = \dfrac{1}{1+e^{-z}}
+$$</div>
+<p>The sigmoid activation function is rarely used in modern neural networks because it suffers from the vanishing gradient problem, but it is often used as the final activation function before the output. The reason is that it is able to squash values to be between 0 and 1, which is what we want since recall we want <span class="math">\(\hat{y}^{(i)}\)</span> to be between 0 and 1 since <span class="math">\(\hat{y}^{(i)} = P(y^{(i)} = 1 | x^{(i)})\)</span>.</p>
+<p>So we get:</p>
+<div class="math">$$\hat{y}^{(i)} = a^{(i)[3]} = \sigma(z^{(i)[3]})$$</div>
+<p><span class="math">\(\hat{y}^{(i)}\)</span> has the same dimensions as <span class="math">\(z^{(i)[3]}\)</span>, so it's (1,1).</p>
+<p>And that's it!</p>
+<p>&nbsp;</p>
+<h3>Conclusion</h3>
+<p>In this blog post, I used a 3-layer neural network example to help us deconstruct the math involved in forward propagation. One of the hardest parts of this process was making sure the dimensions of all the matricies match up, so some parting thoughts on dimensions:</p>
+<ul>
+<li>If you think about just one training example <span class="math">\(i\)</span> like we did, the dimensions of activations <span class="math">\(\textbf{a}\)</span> will always be <span class="math">\((n_{a}, 1)\)</span>, where <span class="math">\(n_a\)</span> is equal to the number of nodes in the layer. So for example, if we had 100 nodes in the 5th hidden layer, <span class="math">\(\textbf{a}^{(i)[5]}\)</span> would have dimensions (100, 1).</li>
+<li>If you think about <span class="math">\(m\)</span> training examples, you simply switch the 2nd dimension from <span class="math">\(1\)</span> to <span class="math">\(m\)</span>. So for example, if we had 100 nodes in the 5th hidden layer, for m-training examples <span class="math">\(\textbf{a}^{(i)[5]}\)</span> would have dimensions (100, m).</li>
+<li>The weights <span class="math">\(\textbf{W}^{l}\)</span> for layer <span class="math">\(l\)</span> will have dimensions <span class="math">\((n_{a}^{[l]}, n_{a}^{[l-1]})\)</span> Notice that the weights don't care about the second dimension of activations <span class="math">\(\textbf{a}^{[l]}\)</span>, they just care about that 1st dimension.</li>
+<li>The final output layer is also our <span class="math">\(\hat{y}^{(i)}\)</span>. We count this layer when we label a neural network along with the hidden layers, so a 3-layer Neural Network will only have 2 hidden layers. </li>
+</ul>
+<p>Now that we have the forward propagation figured out, we can generate a prediction <span class="math">\(\hat{y}^{(i)}\)</span> given a feature vector for the ith training example <span class="math">\(\textbf{x}^{(i)}\)</span>. But is this a good prediction? How does it compare to the actual label, <span class="math">\(y^{(i)}\)</span>? In order to come up with a good prediction not just for the ith training example but for all examples, we need an algorithm to find the best values for our weights <span class="math">\(\textbf{W}\)</span> and biases <span class="math">\(\textbf{b}\)</span>. </p>
+<p>The most popular algorithm to use is called backpropagation, which we will discuss in the <a href="/backprop">next post</a>.</p>
+<script type="text/javascript">if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'black ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+        </div>
+
+        <div class="meta">
+            <div>
+                    <a href="http://localhost:8000/tag/neural-networks.html" class="tag">neural networks</a>
+                    <a href="http://localhost:8000/tag/machine-learning.html" class="tag">machine learning</a>
+            </div>
+        </div>
+    </article>
+
+
+</div>
+
+<style type="text/css">
+{
+    max-width: 700px;
+}
+
+.text_cell .prompt {
+    display: none;
+}
+
+div.cell {
+    padding: 0;
+}
+
+div.text_cell_render {
+    padding: 0;
+}
+
+div.prompt {
+    font-size: 13px;
+}
+
+div.input_prompt {
+    padding: .7em 0.2em;
+}
+
+div.output_prompt {
+    padding: .4em .2em;
+}
+
+div.input_area {
+    margin: .2em 0.4em;
+    max-width: 580px;
+}
+
+table.dataframe {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    line-height: 20px;
+}
+
+table.dataframe th, td {
+    padding: 4px;
+    text-align: left;
+}
+
+pre code {
+    background-color: inherit;
+}</style>
+
+        </div>
+<!--
+    <footer>
+      <p>
+        © 2012-2017 Jason Osajima, license <a href=""> </a>
+        unless otherwise noted.
+        Generated by <a href= "http://docs.getpelican.com/">Pelican</a>.
+      </p>
+    </footer>
+-->
+    </body>
+</html>
