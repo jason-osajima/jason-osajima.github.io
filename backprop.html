@@ -611,7 +611,7 @@ d\textbf{W}^{[3]}, db^{[3]} \bigg)$$</div>
     \vdots \\\\
     f_n((x_{11}, x_{21}, \dotsc, x_{m1})) \\\\
 \end{bmatrix}$$</div>
-<p>So <span class="math">\(f(\textbf{x})\)</span> is a (m, 1) column vector. It could also be a row vector, depending on how you define it.</p>
+<p>So <span class="math">\(f(\textbf{x})\)</span> is a (n, 1) column vector. It could also be a row vector, depending on how you define it.</p>
 <p>So then, the Jacobian Matrix of <span class="math">\(f\)</span> with respect to <span class="math">\(\textbf{x}\)</span> is defined to be: </p>
 <div class="math">$$ \dfrac{\partial\mathcal{f}}{\partial \mathbf{x}} = 
 \begin{bmatrix}
@@ -625,7 +625,7 @@ d\textbf{W}^{[3]}, db^{[3]} \bigg)$$</div>
 \dfrac{\partial\mathcal{f_n}}{\partial x_{m1}} \\\\
 \end{bmatrix}
 $$</div>
-<p>Notice that the matrix has dimensions <span class="math">\((n, m)\)</span>. It gets its first dimension from the number of entries in the input vector <span class="math">\(\textbf{x}\)</span> and its second dimensions from the number of entries in the output vector <span class="math">\(\mathcal{f}(\textbf{x})\)</span>, regardless of whether those vectors are column or row vectors. So actually, if <span class="math">\(\textbf{x}\)</span> was a row vector, we would get:</p>
+<p>Notice that the matrix has dimensions <span class="math">\((n, m)\)</span>. It gets its first dimension from the number of entries in the output vector <span class="math">\(\mathcal{f}(\textbf{x})\)</span> and its second dimensions from the number of entries in the input vector <span class="math">\(\textbf{x}\)</span>, regardless of whether those vectors are column or row vectors. So actually, if <span class="math">\(\textbf{x}\)</span> was a row vector, we would get:</p>
 <div class="math">$$ \dfrac{\partial\mathcal{f}}{\partial\mathbf{x}} = 
 \begin{bmatrix}
 \\

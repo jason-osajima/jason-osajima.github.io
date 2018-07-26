@@ -257,7 +257,7 @@ d\textbf{W}^{[3]}, db^{[3]} \bigg)$$&lt;/div&gt;
     \vdots \\\\
     f_n((x_{11}, x_{21}, \dotsc, x_{m1})) \\\\
 \end{bmatrix}$$&lt;/div&gt;
-&lt;p&gt;So &lt;span class="math"&gt;\(f(\textbf{x})\)&lt;/span&gt; is a (m, 1) column vector. It could also be a row vector, depending on how you define it.&lt;/p&gt;
+&lt;p&gt;So &lt;span class="math"&gt;\(f(\textbf{x})\)&lt;/span&gt; is a (n, 1) column vector. It could also be a row vector, depending on how you define it.&lt;/p&gt;
 &lt;p&gt;So then, the Jacobian Matrix of &lt;span class="math"&gt;\(f\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; is defined to be: &lt;/p&gt;
 &lt;div class="math"&gt;$$ \dfrac{\partial\mathcal{f}}{\partial \mathbf{x}} = 
 \begin{bmatrix}
@@ -271,7 +271,7 @@ d\textbf{W}^{[3]}, db^{[3]} \bigg)$$&lt;/div&gt;
 \dfrac{\partial\mathcal{f_n}}{\partial x_{m1}} \\\\
 \end{bmatrix}
 $$&lt;/div&gt;
-&lt;p&gt;Notice that the matrix has dimensions &lt;span class="math"&gt;\((n, m)\)&lt;/span&gt;. It gets its first dimension from the number of entries in the input vector &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; and its second dimensions from the number of entries in the output vector &lt;span class="math"&gt;\(\mathcal{f}(\textbf{x})\)&lt;/span&gt;, regardless of whether those vectors are column or row vectors. So actually, if &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; was a row vector, we would get:&lt;/p&gt;
+&lt;p&gt;Notice that the matrix has dimensions &lt;span class="math"&gt;\((n, m)\)&lt;/span&gt;. It gets its first dimension from the number of entries in the output vector &lt;span class="math"&gt;\(\mathcal{f}(\textbf{x})\)&lt;/span&gt; and its second dimensions from the number of entries in the input vector &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, regardless of whether those vectors are column or row vectors. So actually, if &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; was a row vector, we would get:&lt;/p&gt;
 &lt;div class="math"&gt;$$ \dfrac{\partial\mathcal{f}}{\partial\mathbf{x}} = 
 \begin{bmatrix}
 \\
@@ -1264,7 +1264,7 @@ $$&lt;/div&gt;
 &lt;p&gt;Notice that we are using the superscript &lt;span class="math"&gt;\((i)\)&lt;/span&gt; to denote the ith training example. So the third training example is &lt;span class="math"&gt;\((\textbf{x}^{(3)}, y^{(3)})\)&lt;/span&gt;. Next, we can take all of these &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; vectors and line them up to create a matrix like so:&lt;/p&gt;
 &lt;div class="math"&gt;$$\textbf{X} = \begin{bmatrix}
     | &amp;amp; | &amp;amp; ... &amp;amp; | \\
-   \textbf{x}^{(2)} &amp;amp; \textbf{x}^{(2)} &amp;amp; ... &amp;amp; \textbf{x}^{(m)} \\
+   \textbf{x}^{(1)} &amp;amp; \textbf{x}^{(2)} &amp;amp; ... &amp;amp; \textbf{x}^{(m)} \\
    | &amp;amp; | &amp;amp; ... &amp;amp; |
 \end{bmatrix}$$&lt;/div&gt;
 &lt;p&gt;The shape of &lt;span class="math"&gt;\(\textbf{X}\)&lt;/span&gt; is &lt;span class="math"&gt;\((n_x, m)\)&lt;/span&gt;, or &lt;span class="math"&gt;\(X \in \mathbb{R}^{n_x, m}\)&lt;/span&gt;. Each row are the values for a given feature, and each column is a training example.&lt;/p&gt;
@@ -1292,7 +1292,7 @@ y^{(m)}
 &lt;p&gt;Notice that our neural network has 4 layers of nodes, but we said in the beginning that our neural network has 2 hidden layers. What's the reasoning behind this? We treat our output and input layers as layers, so technically &lt;span class="math"&gt;\(x^{(i)} = a^{(i)[0]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(a^{(i)[3]} = \hat{y}^{(i)}\)&lt;/span&gt;. We define &lt;span class="math"&gt;\(a\)&lt;/span&gt; as a vector for the given layer, and the superscript &lt;span class="math"&gt;\([j]\)&lt;/span&gt; tells us the layer number, so the input layer is the 0th layer and the output layer is the 3rd layer. Given that, how do we describe the hidden layers in between?&lt;/p&gt;
 &lt;p&gt;&lt;img src="/images/nn_3.png" title="[nn_3]" alt="[nn_3]"&gt;&lt;/p&gt;
 &lt;p&gt;&lt;em&gt;Diagram with hidden layers.&lt;/em&gt;&lt;/p&gt;
-&lt;p&gt;In our diagram, we now have hidden layers &lt;span class="math"&gt;\(\textbf{a}^{(i)[1]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{a}^{(i)[2]}\)&lt;/span&gt;, and output layer &lt;span class="math"&gt;\(\textbf{a}^{(i)[3]} = \hat{y}^{(i)}\)&lt;/span&gt; represented and our 3 layer hidden network is defined in our diagram. This confused me from the beginning because it's a 3-layer Neural Network with 2 hidden layers. So the number of hidden layers is 1 - number of layers, since we count the output as a layer.&lt;/p&gt;
+&lt;p&gt;In our diagram, we now have hidden layers &lt;span class="math"&gt;\(\textbf{a}^{(i)[1]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{a}^{(i)[2]}\)&lt;/span&gt;, and output layer &lt;span class="math"&gt;\(\textbf{a}^{(i)[3]} = \hat{y}^{(i)}\)&lt;/span&gt; represented and our 3 layer hidden network is defined in our diagram. This confused me from the beginning because it's a 3-layer Neural Network with 2 hidden layers. So the number of hidden layers is number of layers - 1, since we count the output as a layer.&lt;/p&gt;
 &lt;p&gt;We can also vectorize our hidden layers the same way we vectorized our input (&lt;span class="math"&gt;\(\textbf{X}\)&lt;/span&gt;) and output (&lt;span class="math"&gt;\(\hat{\textbf{Y}}\)&lt;/span&gt;) by lining up the vectors for a hidden layer &lt;span class="math"&gt;\(j\)&lt;/span&gt;:&lt;/p&gt;
 &lt;div class="math"&gt;$$\textbf{A}^{[j]} = \begin{bmatrix}
     | &amp;amp; | &amp;amp; ... &amp;amp; | \\
@@ -1307,7 +1307,7 @@ y^{(m)}
 &lt;p&gt;&lt;img src="/images/nn_4.png" title="[nn_4]" alt="[nn_4]"&gt;&lt;/p&gt;
 &lt;p&gt;From the diagram, you can see that the input consists of all the entries from the previous layer (in this case the input layer from the &lt;span class="math"&gt;\(ith\)&lt;/span&gt; training example &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; and the output is the entry for the first hidden layer &lt;span class="math"&gt;\(a_1^{(i)[1]}\)&lt;/span&gt;.&lt;/p&gt;
 &lt;p&gt;&lt;img src="/images/nn_5.png" title="[nn_5]" alt="[nn_5]"&gt;&lt;/p&gt;
-&lt;p&gt;In order to calculate &lt;span class="math"&gt;\(a_1^{(i)[1]}\)&lt;/span&gt;, we take each entry from &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; and multiply it by a weight. The notation can be a little tricky, so let's break that down. Let's say we have &lt;span class="math"&gt;\(W^{[1]}_{13}\)&lt;/span&gt;. We multiply this guy by the third entry in &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, or &lt;span class="math"&gt;\(x^{(i)}_1\)&lt;/span&gt; to get the first entry in the &lt;span class="math"&gt;\(1st\)&lt;/span&gt; layer.&lt;/p&gt;
+&lt;p&gt;In order to calculate &lt;span class="math"&gt;\(a_1^{(i)[1]}\)&lt;/span&gt;, we take each entry from &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; and multiply it by a weight. The notation can be a little tricky, so let's break that down. Let's say we have &lt;span class="math"&gt;\(W^{[1]}_{13}\)&lt;/span&gt;. We multiply this guy by the third entry in &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, or &lt;span class="math"&gt;\(x^{(i)}_3\)&lt;/span&gt; to get the first entry in the &lt;span class="math"&gt;\(1st\)&lt;/span&gt; layer.&lt;/p&gt;
 &lt;p&gt;Let's breakdown the weights corresponding to &lt;span class="math"&gt;\(a_1^{(i)[1]}\)&lt;/span&gt; in our diagram. &lt;span class="math"&gt;\(\textbf{W}^{[1]}\)&lt;/span&gt; is a &lt;span class="math"&gt;\((4, 3)\)&lt;/span&gt; matrix:&lt;/p&gt;
 &lt;div class="math"&gt;$$
 \textbf{W}^{[1]} = 
