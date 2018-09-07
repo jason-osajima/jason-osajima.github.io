@@ -482,7 +482,7 @@ article .meta a.comments_btn:hover {
 <p>But notice that if we take the log of both sides, our objective stays the same. Instead of maximizing <span class="math">\(p\)</span>, we still just need to maximize the <span class="math">\(log\)</span> of <span class="math">\(p\)</span>, since the <span class="math">\(log\)</span> function increases monotonically. If we take the <span class="math">\(log\)</span> of both sides, and do a little math, we get:</p>
 <div class="math">$$log \ p(y | \hat{y}, \mathbf{x}) = log \ (y^{\hat{y}}(1-y)^{(1-\hat{y})})$$</div>
 <div class="math">$$log \ p(y | \hat{y}, \mathbf{x}) = \hat{y}log \ y + (1-\hat{y})log \ (1-y)$$</div>
-<p>Notice that the left side just becomes <span class="math">\(-\mathcal{L}(\hat{y}, y)\)</span>.</p>
+<p>Notice that the right side just becomes <span class="math">\(-\mathcal{L}(\hat{y}, y)\)</span>.</p>
 <div class="math">$$log \ p(y | \hat{y}, x) = -\mathcal{L}(\hat{y}, y)$$</div>
 <div class="math">$$\mathcal{L}(\hat{y}, y) = -log \ p(y | \hat{y}, x)$$</div>
 <p>So when we say we want to minimize <span class="math">\(\mathcal{L}\)</span>, we really mean we want to maximize the probability that <span class="math">\(y\)</span> is equal to it's value given our prediction <span class="math">\(\hat{y}\)</span> and feature vector <span class="math">\(x\)</span>. </p>

@@ -477,7 +477,7 @@ y^{(m)}
 <p><img src="/images/nn_4.png" title="[nn_4]" alt="[nn_4]"></p>
 <p>From the diagram, you can see that the input consists of all the entries from the previous layer (in this case the input layer from the <span class="math">\(ith\)</span> training example <span class="math">\(\textbf{x}^{(i)}\)</span> and the output is the entry for the first hidden layer <span class="math">\(a_1^{(i)[1]}\)</span>.</p>
 <p><img src="/images/nn_5.png" title="[nn_5]" alt="[nn_5]"></p>
-<p>In order to calculate <span class="math">\(a_1^{(i)[1]}\)</span>, we take each entry from <span class="math">\(\textbf{x}^{(i)}\)</span> and multiply it by a weight. The notation can be a little tricky, so let's break that down. Let's say we have <span class="math">\(W^{[1]}_{13}\)</span>. We multiply this guy by the third entry in <span class="math">\(\textbf{x}\)</span>, or <span class="math">\(x^{(i)}_3\)</span> to get the first entry in the <span class="math">\(1st\)</span> layer.</p>
+<p>In order to calculate <span class="math">\(a_1^{(i)[1]}\)</span>, we take each entry from <span class="math">\(\textbf{x}^{(i)}\)</span> and multiply it by a weight. The notation can be a little tricky, so let's break that down. Let's say we have <span class="math">\(W^{[1]}_{13}\)</span>. We multiply this guy by the third entry in <span class="math">\(\textbf{x}\)</span>, or <span class="math">\(x^{(i)}_3\)</span> to get the first entry in the <span class="math">\(1st\)</span> l ayer.</p>
 <p>Let's breakdown the weights corresponding to <span class="math">\(a_1^{(i)[1]}\)</span> in our diagram. <span class="math">\(\textbf{W}^{[1]}\)</span> is a <span class="math">\((4, 3)\)</span> matrix:</p>
 <div class="math">$$
 \textbf{W}^{[1]} = 
@@ -534,12 +534,6 @@ $$</div>
 <p>First, what's happening when we transition from our vector of features for the first training example <span class="math">\(i\)</span> to the activations from our first hidden layer. We start by multiplying <span class="math">\(\textbf{x}^{(i)}\)</span> by the weights and bias of the first hidden layer, <span class="math">\(\textbf{W}^{[1]}\)</span> and <span class="math">\(\textbf{b}^{[1]}\)</span> to get <span class="math">\(\textbf{z}^{(i)[1]}\)</span>. People sometimes call <span class="math">\(\textbf{z}^{(i)[1]}\)</span> the activity of the hidden layer 1 for training example <span class="math">\(i\)</span>.</p>
 <div class="math">$$\textbf{z}^{(i)[1]} = \textbf{W}^{[1]}\textbf{x}^{(i)} + \textbf{b}^{[1]}$$</div>
 <p>So we start by multiplying <span class="math">\(\textbf{x}^{(i)}\)</span> by <span class="math">\(\textbf{W}^{[1]}\)</span>. <span class="math">\(\textbf{x}^{(i)}\)</span> is a (3 x 1) matrix, and <span class="math">\(\textbf{W}^{[1]}\)</span> is a (4 x 3) matrix. We then add the bias, <span class="math">\(\textbf{b}^{[1]}\)</span>. The dimensions of the bias <span class="math">\(\textbf{b}^{[1]}\)</span> match the dimensions of <span class="math">\(\textbf{z}^{(i)[1]}\)</span> which are (4, 1). Once we get the activity matrix <span class="math">\(\textbf{z}^{(i)[1]}\)</span>, we apply the activation function to each element in <span class="math">\(\textbf{z}^{(i)[1]}\)</span>. Recall that the activation function that we chose is ReLU, which we defined as:</p>
-<div class="math">$$
-g(z) = \begin{cases}
-   x &amp;\text{if } z &gt; 0  \\
-   0 &amp;\text{otherwise}
-\end{cases}
-$$</div>
 <p>So we get:</p>
 <div class="math">$$\textbf{a}^{(i)[1]} = g(\textbf{z}^{(i)[1]})$$</div>
 <p>Which just indicates that the ReLU function <span class="math">\(g()\)</span> is applied elementwise to <span class="math">\(\textbf{z}^{(i)[1]}\)</span> to get <span class="math">\(\textbf{a}^{(i)[1]}\)</span>.</p>

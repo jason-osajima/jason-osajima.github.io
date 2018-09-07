@@ -1,5 +1,1186 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Jason {osa-jima} - posts</title><link href="http://www.jasonosajima.com/" rel="alternate"></link><link href="http://www.jasonosajima.com/feeds/posts.atom.xml" rel="self"></link><id>http://www.jasonosajima.com/</id><updated>2018-07-18T00:00:00-07:00</updated><entry><title>The Math behind Neural Networks - Backpropagation</title><link href="http://www.jasonosajima.com/backprop.html" rel="alternate"></link><published>2018-07-18T00:00:00-07:00</published><updated>2018-07-18T00:00:00-07:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2018-07-18:/backprop.html</id><summary type="html">
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Jason {osa-jima} - posts</title><link href="http://www.jasonosajima.com/" rel="alternate"></link><link href="http://www.jasonosajima.com/feeds/posts.atom.xml" rel="self"></link><id>http://www.jasonosajima.com/</id><updated>2018-08-18T00:00:00-07:00</updated><entry><title>Convolutional Networks - VGG16</title><link href="http://www.jasonosajima.com/convnets_vgg.html" rel="alternate"></link><published>2018-08-18T00:00:00-07:00</published><updated>2018-08-18T00:00:00-07:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2018-08-18:/convnets_vgg.html</id><summary type="html">
+The Imagenet Large Scale Visual Recognition Challenge (&lt;a href="http://www.image-net.org/challenges/LSVRC/"&gt;ILSVRC&lt;/a&gt;) is an annual computer vision competition. Each year, teams compete on two tasks. The first is to detect objects within an image coming from 200 classes, which is called object localization. The second is to classify images, each labeled with one of 1000 categories, which is called image classification.&lt;/p&gt;
+&lt;p&gt;In 2012, Alex Krizhevsky, Ilya Sutskever and Geoffrey E. Hinton won the competition by a sizable margin using a convolutional network (ConvNet) named &lt;a href="https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf"&gt;AlexNet&lt;/a&gt;. This became a watershed moment for deep learning.&lt;/p&gt;
+&lt;p&gt;Two years later, Karen Simonyan and Andrew Zisserman won 1st and 2nd place in the two tasks described above. Their model was also a ConvNet named VGG-19. VGG is the acronym for their lab at Oxford (Visual Geometry Group) and 19 is the number of layers in the model with trainable parameters.&lt;/p&gt;
+&lt;p&gt;What attracted me to this model was its simplicity - the model shares most of the same basic architecture and algorithms as &lt;a href="http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf"&gt;LeNet5&lt;/a&gt;, one of the first ConvNets from the 90s. The main difference is the addition of several more layers (from 5 to 19), which seems to validate the idea that deeper networks are able to learn better representations (this trend continues with the introduction of Residual Networks, which won IVCLR the following year with a whopping 152 layers).&lt;/p&gt;
+</summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
+&lt;p&gt;
+The Imagenet Large Scale Visual Recognition Challenge (&lt;a href="http://www.image-net.org/challenges/LSVRC/"&gt;ILSVRC&lt;/a&gt;) is an annual computer vision competition. Each year, teams compete on two tasks. The first is to detect objects within an image coming from 200 classes, which is called object localization. The second is to classify images, each labeled with one of 1000 categories, which is called image classification.&lt;/p&gt;
+&lt;p&gt;In 2012, Alex Krizhevsky, Ilya Sutskever and Geoffrey E. Hinton won the competition by a sizable margin using a convolutional network (ConvNet) named &lt;a href="https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf"&gt;AlexNet&lt;/a&gt;. This became a watershed moment for deep learning.&lt;/p&gt;
+&lt;p&gt;Two years later, Karen Simonyan and Andrew Zisserman won 1st and 2nd place in the two tasks described above. Their model was also a ConvNet named VGG-19. VGG is the acronym for their lab at Oxford (Visual Geometry Group) and 19 is the number of layers in the model with trainable parameters.&lt;/p&gt;
+&lt;p&gt;What attracted me to this model was its simplicity - the model shares most of the same basic architecture and algorithms as &lt;a href="http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf"&gt;LeNet5&lt;/a&gt;, one of the first ConvNets from the 90s. The main difference is the addition of several more layers (from 5 to 19), which seems to validate the idea that deeper networks are able to learn better representations (this trend continues with the introduction of Residual Networks, which won IVCLR the following year with a whopping 152 layers).&lt;/p&gt;
+
+
+&lt;p&gt;Similar to my first post on &lt;a href="/forwardprop"&gt;forward propagation&lt;/a&gt; and &lt;a href="/backprop"&gt;backpropagation&lt;/a&gt; for a vanilla neural network, I will walk through forward propagation and backpropagation for VGG-16 and discuss some of the advantages of using a ConvNet over a fully-connected neural network for computer vision tasks. VGG-16 is comparable in performance to VGG-19 but is simpler (it has three fewer layers) so we will roll with that.&lt;/p&gt;
+&lt;p&gt;Next, I will walk through the code for VGG-16 in tensorflow and chronicle my progress training the model. In the original paper, it took the authors 2-3 weeks to train one model using 4 NVIDIA Titan Black GPUs. I don't have four GPUs that can run concurrently, so we'll see how it goes.&lt;/p&gt;
+&lt;h2&gt;Objective&lt;/h2&gt;
+&lt;p&gt;The objective for this task is to predict 5 (out of 1000) classes for each one of 100,000 test set images. The actual (ground truth) image label has to be one of the five predicted classes.&lt;/p&gt;
+&lt;p&gt;So our input will be the pixel values of an image. The images in the ILSVRC dataset are fixed-size 224 x 224 RGB. What this means is that for each color channel (red, green and blue) each image has 224 x 224 pixel values. We can represent each input as a tensor with dimensions &lt;span class="math"&gt;\((224, 224, 3)\)&lt;/span&gt; and label it as &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;. &lt;/p&gt;
+&lt;p&gt;Each pixel value is a scalar and can take on values between 0 and 225. We can represent a pixel value as &lt;span class="math"&gt;\(x_{(i,j,k)}\)&lt;/span&gt;, where i is the value for the first dimension, j for the second, and k for the third (which recall is the channel).&lt;/p&gt;
+&lt;p&gt;The first two dimensions represent the location of the pixel value within the image, and the third dimension is the channel that pixel value belongs to (so for example, if the third dimension of a pixel value is equal to 1, it belongs to the red channel).&lt;/p&gt;
+&lt;p&gt;Representing the image as a tensor looks something like this:&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/input_x.png" width="400" title="[input_x]" alt="[input_x]"&gt;&lt;/p&gt;
+&lt;p&gt;Our output &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; will be a vector of probabilities for each of the 1000 classes for the given image. &lt;/p&gt;
+&lt;div class="math"&gt;$$
+\hat{\textbf{y}} =
+\begin{bmatrix}
+\hat{y}_{1} \\\\
+\hat{y}_{2} \\\\ 
+\vdots \\\\
+\hat{y}_{1000}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Let's say we input an image &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; and the model believes the image belongs to class 1 with probability 5%, class 2 with probability 7%, class 4 with probability 9%, class 999 with probability 2%, class 1000 with probability 77%, and all other classes with probability 0%. In this situation, our output &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; would look like this:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\hat{\textbf{y}} =
+\begin{bmatrix}
+0.05 \\\\ 
+0.07 \\\\
+0 \\\\
+0.09 \\\\ 
+\vdots \\\\
+0.02 \\\\
+0.77
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Notice that the sum of the elements in &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; are equal to &lt;span class="math"&gt;\(1\)&lt;/span&gt;. We use a softmax function at the end of our ConvNet to ensure this property. We'll discuss the softmax function later.&lt;/p&gt;
+&lt;p&gt;In order to compute accuracy, we use &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; to create a vector of the top 5 classes in decreasing order of probability. &lt;/p&gt;
+&lt;div class="math"&gt;$$
+\textbf{c} =
+\begin{bmatrix}
+c_1 \\\\ 
+c_2 \\\\
+c_3 \\\\
+c_4 \\\\ 
+c_5
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Using our example, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\textbf{c} =
+\begin{bmatrix}
+1000 \\\\ 
+2 \\\\
+1 \\\\
+4 \\\\ 
+999
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Let's say the image was an image of a dog on a street. The picture of the dog is the 4th class. The picture of the street is the 1000th class. Since the image has two ground truth classes, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\textbf{C} =
+\begin{bmatrix}
+C_1 \\\\ 
+C_2
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Using our example, we get for our ground truth labels:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\textbf{C} =
+\begin{bmatrix}
+4 \\\\ 
+1000
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Let &lt;span class="math"&gt;\(d(c_i, C_k) = 0\)&lt;/span&gt; if &lt;span class="math"&gt;\(c_i = C_k\)&lt;/span&gt; and 1 otherwise. To calculate the error of the algorithm, we use:&lt;/p&gt;
+&lt;div class="math"&gt;$$e = \dfrac{1}{n} \sum_k \min_i d(c_i, C_k)$$&lt;/div&gt;
+&lt;p&gt;For our example, the error is:&lt;/p&gt;
+&lt;div class="math"&gt;$$e = \dfrac{1}{2}\big( \min_i d(c_i, C_1) + \min_i d(c_i, C_2) \big)$$&lt;/div&gt;
+&lt;div class="math"&gt;$$e = \dfrac{1}{2}\big( 0 + 0 \big)$$&lt;/div&gt;
+&lt;div class="math"&gt;$$e = 0$$&lt;/div&gt;
+&lt;p&gt;Since both of the ground truth labels were in our top 5, we get an error of &lt;span class="math"&gt;\(0\)&lt;/span&gt;.&lt;/p&gt;
+&lt;h3&gt;Considering Batches of &lt;span class="math"&gt;\(m\)&lt;/span&gt; training examples&lt;/h3&gt;
+&lt;p&gt;We just deconstructed the input and output for our model. Hopefully it makes sense. So far, we've only considered the input and output for one example. What if we had &lt;span class="math"&gt;\(m\)&lt;/span&gt; training examples that we wanted to input into the model as a batch? It's actually not too bad, we are just going to add another dimension.&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\textbf{X} = [\textbf{x}^{(1)}, \textbf{x}^{(2)}, ... \textbf{x}^{(m)}]
+$$&lt;/div&gt;
+&lt;p&gt;So we can think of &lt;span class="math"&gt;\(X\)&lt;/span&gt; as a tensor with dimensions &lt;span class="math"&gt;\((m, 224, 224, 3)\)&lt;/span&gt;, where &lt;span class="math"&gt;\(m\)&lt;/span&gt; is the number of examples in our batch. The superscript denotes which training example it is in the batch. So &lt;span class="math"&gt;\(\textbf{x}^{(1)}\)&lt;/span&gt; would be the 1st training example from the batch. Similarly for output:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\textbf{Y} = [\textbf{y}^{(1)}, \textbf{y}^{(2)}, ... \textbf{y}^{(m)}]
+$$&lt;/div&gt;
+&lt;p&gt;&lt;span class="math"&gt;\(Y\)&lt;/span&gt; is a tensor with dimensions &lt;span class="math"&gt;\((1000, m)\)&lt;/span&gt;, and we use the same superscript notation as above.&lt;/p&gt;
+&lt;h2&gt;Defining the Architecture&lt;/h2&gt;
+&lt;p&gt;Let's see if we can represent all 16 layers of this model visually:&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_1.png" title="[VGG_1]" alt="[VGG_1]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of the architecture of VGG-16&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;If you notice, layers are represented as either 3D rectangular prisms (the layers on the left) or 2D rectangles (the layers on the right). This was done on purpose to represent the dimensions of the layer. For example, recall that the input &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; is a 3D tensor &lt;span class="math"&gt;\((224, 224, 3)\)&lt;/span&gt; and is represented on the far left as a prism. Our output &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; is a matrix &lt;span class="math"&gt;\((1000, 1)\)&lt;/span&gt; and is represented on the far right as a rectangle.&lt;/p&gt;
+&lt;p&gt;Alright. If you are crazy you might have counted the layers and noticed that there are 24 layers in this diagram. But this model is called VGG-16. So the 16 refers to the number of layers that have trainable parameters. I'll highlight and label them - &lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_2.png" title="[VGG_2]" alt="[VGG_2]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of the architecture of VGG-16 with trainable parameters highlighted in red.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;There are two types of layers with trainable parameters that are highlighted. The 3D ones on the left are Conv Layers, and the ones on the right are Fully-connected Layers.&lt;/p&gt;
+&lt;p&gt;What are the other layers that don't have trainable parameters? Recall that the layers on the far left and far right are the input &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; and output &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; layers. In order to get the output &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; layer we apply the Softmax function, so we will call this layer the Softmax Layer.&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_3.png" title="[VGG_3]" alt="[VGG_3]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of the architecture of VGG-16 with input and output highlighted in blue&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;The layers that follow the string of Conv Layers are called Pooling Layers.&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_4.png" title="[VGG_4]" alt="[VGG_4]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of the architecture of VGG-16 with Pooling Layers highlighted in green&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Finally, there's a layer where we flatten the 3D tensor into a column vector. I don't think this layer has an official name, so we'll call it a Flat Layer.&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_5.png" title="[VGG_5]" alt="[VGG_5]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of the architecture of VGG-16 with Flat Layer highlighted in purple.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;So within this architecture, there are:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Conv Layers&lt;/li&gt;
+&lt;li&gt;Pooling Layers&lt;/li&gt;
+&lt;li&gt;Flat Layer&lt;/li&gt;
+&lt;li&gt;Softmax Layer&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;In the next few sections, we will take an example from each and describe how the math works. We will ask the question, "what operations are we applying to the previous layer to get to the current layer?" We will start with Conv Layers, which are the integral part of Conv Nets.&lt;/p&gt;
+&lt;h2&gt;Conv Layers&lt;/h2&gt;
+&lt;p&gt;In &lt;a href="https://www.deeplearningbook.org/contents/convnets.html"&gt;The Deep Learning Book&lt;/a&gt;, the authors describe the difference between Conv Nets and Neural Networks:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Convolutional networks are simply neural networks that use convolution in place of general matrix multiplication in at least one of their layers.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Recall in our previous &lt;a href="/forwardprop"&gt;neural network example&lt;/a&gt;, the transition from the first layer &lt;span class="math"&gt;\(\textbf{a}^{[0]}\)&lt;/span&gt; to the second layer &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt; was simply a weight matrix multiplication, the addition of a bias, and the element-wise application of the ReLU function.&lt;/p&gt;
+&lt;div class="math"&gt;$$\textbf{a}^{[1]} = g(\textbf{W}^{[1]}\textbf{a}^{[0]} + \textbf{b}^{[1]})$$&lt;/div&gt;
+&lt;p&gt;For VGG-16, the only difference that we will be making is replacing the general matrix multiplication with a convolution, and instead of a 2-D weight matrix, we will be using a 3-D filter tensor.&lt;/p&gt;
+&lt;p&gt;Let's deconstruct the first Conv Layer in the diagram, the one that succeeds the input layer (&lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;). &lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_6.png" title="[VGG_6]" alt="[VGG_6]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of the architecture of VGG-16 with example Conv Layer and preceding input layer highlighted.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Let's first cover the dimensions of each. We discussed earlier that our input is a picture, with dimensions 224 by 224 by 3. We labeled this tensor &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;:&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/input_x.png" width="400" title="[input_x]" alt="[input_x]"&gt;&lt;/p&gt;
+&lt;p&gt;As in our previous post on forward prop, we can think of this layer as &lt;span class="math"&gt;\(\textbf{a}^{[0]}\)&lt;/span&gt;. Let's call the first Conv Layer &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt;. This layer has dimensions 224 by 224 by 64:&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_7.png" width="400" title="[VGG_7]" alt="[VGG_7]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of first Conv Layer &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt; with dimensions &lt;span class="math"&gt;\((224, 224, 64)\)&lt;/span&gt;&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;So how do we go from &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; to &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt;? We start by applying the convolution function to &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; 6 times using 6 different filters and then add a bias &lt;span class="math"&gt;\(\textbf{b}^{[1]}\)&lt;/span&gt; to get our intermediate product, &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt;. We'll call the collection of filters &lt;span class="math"&gt;\(\textbf{W}^{[1]}_c\)&lt;/span&gt;, with dimensions &lt;span class="math"&gt;\((16, 16, 3, 6)\)&lt;/span&gt;. The first three dimensions represent the height, width, and number of channels, and the last dimension is the filter. We can represent each filter with &lt;span class="math"&gt;\(\textbf{W}^{[1]}_c(i)\)&lt;/span&gt;, where &lt;span class="math"&gt;\(i\)&lt;/span&gt; is the filter number in &lt;span class="math"&gt;\(\textbf{W}^{[1]}_c\)&lt;/span&gt;. &lt;/p&gt;
+&lt;p&gt;We add the same bias for each filter, so &lt;span class="math"&gt;\(\textbf{b}^{[1]}\)&lt;/span&gt; has dimensions &lt;span class="math"&gt;\((6,1)\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;Let's see if we can represent this visually:&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_8.png" width="600" title="[VGG_8]" alt="[VGG_8]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of transition from &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; to &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt;. A convolution is applied to &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; 6 times using 6 different filters &lt;span class="math"&gt;\(\textbf{W}^{[1]}_{c(1)}\)&lt;/span&gt;, &lt;span class="math"&gt;\(\textbf{W}^{[1]}_{c(2)}\)&lt;/span&gt;, ... &lt;span class="math"&gt;\(\textbf{W}^{[1]}_{c(6)}\)&lt;/span&gt;&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Let's simplify the dimensions to make it easier to visualize. &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; is a tensor with dimensions &lt;span class="math"&gt;\((224, 224, 3)\)&lt;/span&gt;. Let's instead make it &lt;span class="math"&gt;\((5, 5, 3)\)&lt;/span&gt;. &lt;span class="math"&gt;\(\textbf{W}^{[1]}_{c}\)&lt;/span&gt; has dimensions &lt;span class="math"&gt;\((16, 16, 3, 64)\)&lt;/span&gt;. Let's make it &lt;span class="math"&gt;\((3,3,3,6)\)&lt;/span&gt;. We won't change the dimensions for &lt;span class="math"&gt;\(\textbf{b}^{[1]}\)&lt;/span&gt;. Finally, for &lt;span class="math"&gt;\(\textbf{z}^{[1]}_{(1)}\)&lt;/span&gt; we'll change it's dimensions from &lt;span class="math"&gt;\((224, 224, 64)\)&lt;/span&gt; to &lt;span class="math"&gt;\((3,3,6)\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_9.png" title="[VGG_9]" alt="[VGG_9]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of convolution between the simplified &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; and the 6 filters of &lt;span class="math"&gt;\(\textbf{W}^{[1]}_{c}\)&lt;/span&gt;, resulting in the 6 channels of &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt;.&lt;/em&gt;&lt;/p&gt;
+&lt;h3&gt;Casting the Bias (&lt;span class="math"&gt;\(\textbf{b}^{[1]}\)&lt;/span&gt;)&lt;/h3&gt;
+&lt;p&gt;If you noticed in our diagram, for each of the six elements in &lt;span class="math"&gt;\(\textbf{b}^{[1]}\)&lt;/span&gt;, we repeated it several times to create a tensor that matched the shape of &lt;span class="math"&gt;\(\textbf{z}^{[1]}_(i)\)&lt;/span&gt; so for example, the scalar &lt;span class="math"&gt;\(b^{[1]}_{(1,1)}\)&lt;/span&gt; was converted into a tensor of shape &lt;span class="math"&gt;\((3,3,3)\)&lt;/span&gt;. We do this because the addition of the bias is elementwise, meaning we add the bias to each element of the product of our convlution.&lt;/p&gt;
+&lt;p&gt;So how do we get a value for &lt;span class="math"&gt;\(z^{[1]}_{(i,j,k)}\)&lt;/span&gt; for a given row &lt;span class="math"&gt;\(i\)&lt;/span&gt;, column &lt;span class="math"&gt;\(j\)&lt;/span&gt;, and channel &lt;span class="math"&gt;\(k\)&lt;/span&gt; in &lt;span class="math"&gt;\(z^{[1]}\)&lt;/span&gt;? Unsurprisingly, we use the convolution function:&lt;/p&gt;
+&lt;div class="math"&gt;$$z^{[1]}_{(i,j,k)} = (\textbf{x} * \textbf{W}^{[1]}_{c})(i,j,k) + b^{[1]}_{(k,1)}$$&lt;/div&gt;
+&lt;p&gt;Which becomes:&lt;/p&gt;
+&lt;div class="math"&gt;$$z^{[1]}_{(i,j,k)} = \sum^{3}_{l = 1}\sum^{3}_{m = 1}\sum^{3}_{n = 1}x_{(i + l - 1, j + m - 1, n)}W^{[1]}_{c(l,m,n,k)} + b^{[1]}_{(k,1)}$$&lt;/div&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Technically, this is not a convolution but a related function called the cross-correlation. But most deep learning libraries and papers use cross-correlation as the convolution function.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;So we have defined &lt;span class="math"&gt;\(i\)&lt;/span&gt;, &lt;span class="math"&gt;\(j\)&lt;/span&gt;, &lt;span class="math"&gt;\(k\)&lt;/span&gt; as the coordinates of our end product, &lt;span class="math"&gt;\(z^{[1]}\)&lt;/span&gt;, but what does &lt;span class="math"&gt;\(l\)&lt;/span&gt;, &lt;span class="math"&gt;\(m\)&lt;/span&gt;, and &lt;span class="math"&gt;\(n\)&lt;/span&gt; represent? If you look at the equation above, &lt;span class="math"&gt;\(l\)&lt;/span&gt; is the row number of the filter, &lt;span class="math"&gt;\(m\)&lt;/span&gt; is the column number of the filter, &lt;span class="math"&gt;\(n\)&lt;/span&gt; is the channel number and &lt;span class="math"&gt;\(k\)&lt;/span&gt; tells you which filter we are using. Notice that the convolution is similar to the matrix multiplication we did with a fully-connect neural network, since we are just multiplying elements of &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{W}^{[1]}\)&lt;/span&gt;. We'll talk about the differences a little later, but for now just relish in the fact that the actual math is just multiplication.&lt;/p&gt;
+&lt;p&gt;Let's figure out how we get the value for &lt;span class="math"&gt;\(z^{[1]}_{(1,1,1)}\)&lt;/span&gt;. Plugging in 1 for &lt;span class="math"&gt;\(i\)&lt;/span&gt;, &lt;span class="math"&gt;\(j\)&lt;/span&gt;, and &lt;span class="math"&gt;\(k\)&lt;/span&gt;, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$z^{[1]}_{(1,1,1)} = (\textbf{x} * \textbf{W}^{[1]}_{c})(1,1,1)+ b^{[1]}_{(1,1)}$$&lt;/div&gt;
+&lt;div class="math"&gt;$$z^{[1]}_{(1,1,1)} = \sum^{3}_{n = 1}\sum^{3}_{l = 1}\sum^{3}_{m = 1}x_{(1 + l, 1 + m, n)}W^{[1]}_{c(l,m,n,1)} + b^{[1]}_{(1,1)}$$&lt;/div&gt;
+&lt;p&gt;If you think about it, we are summing over the three dimensions (row, column, channel) of the 1st filter. We know to use the first filter because &lt;span class="math"&gt;\(z^{[1]}_{(1,1,1)}\)&lt;/span&gt; has 1 as it's final dimension. Let's sum over the row and column first and see what we come up with:&lt;/p&gt;
+&lt;div class="math"&gt;$$z^{[1]}_{(1,1,1)} =
+\sum^{3}_{n = 1} \bigg(
+x_{(1, 1, n)}W^{[1]}_{c(1,1,n,1)} + 
+x_{(2, 1, n)}W^{[1]}_{c(2,1,n,1)} + 
+x_{(3, 1, n)}W^{[1]}_{c(3,1,n,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+x_{(1, 2, n)}W^{[1]}_{c(1,2,n,1)} + 
+x_{(2, 2, n)}W^{[1]}_{c(2,2,n,1)} + 
+x_{(3, 2, n)}W^{[1]}_{c(3,2,n,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+x_{(1, 3, n)}W^{[1]}_{c(1,3,n,1)} + 
+x_{(2, 3, n)}W^{[1]}_{c(2,3,n,1)} + 
+x_{(3, 3, n)}W^{[1]}_{c(3,3,n,1)} 
+\bigg) + b^{[1]}_{(1,1)}$$&lt;/div&gt;
+&lt;p&gt;So recall that each channel of our first filter has dimensions &lt;span class="math"&gt;\((3,3)\)&lt;/span&gt; which means that it has 9 values total. So it would make sense that we would have 9 terms in the above equation. Visually, it looks like this:&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_10.png" width="400" title="[VGG_10]" alt="[VGG_10]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of operations needed to calculate &lt;span class="math"&gt;\(z^{[1]}_{(1,1,1)}\)&lt;/span&gt;. Notice that for each channel of &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, there is a corresponding channel in the first filter of &lt;span class="math"&gt;\(\textbf{W}^{[1]}_{c}\)&lt;/span&gt;. We multiply each value of &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; that lines up with &lt;span class="math"&gt;\(\textbf{W}^{[1]}_{c}\)&lt;/span&gt;, and then add them all together. So we have a total of 18 values that we are adding together.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;If we finally sum over the channels, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$z^{[1]}_{(1,1,1)} =
+x_{(1, 1, 1)}W^{[1]}_{c(1,1,1,1)} + 
+x_{(2, 1, 1)}W^{[1]}_{c(2,1,1,1)} + 
+x_{(3, 1, 1)}W^{[1]}_{c(3,1,1,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+x_{(1, 2, 1)}W^{[1]}_{c(1,2,1,1)} + 
+x_{(2, 2, 1)}W^{[1]}_{c(2,2,1,1)} + 
+x_{(3, 2, 1)}W^{[1]}_{c(3,2,1,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+x_{(1, 3, 1)}W^{[1]}_{c(1,3,1,1)} + 
+x_{(2, 3, 1)}W^{[1]}_{c(2,3,1,1)} + 
+x_{(3, 3, 1)}W^{[1]}_{c(3,3,1,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+x_{(1, 1, 2)}W^{[1]}_{c(1,1,2,1)} + 
+x_{(2, 1, 2)}W^{[1]}_{c(2,1,2,1)} + 
+x_{(3, 1, 2)}W^{[1]}_{c(3,1,2,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+x_{(1, 2, 2)}W^{[1]}_{c(1,2,2,1)} + 
+x_{(2, 2, 2)}W^{[1]}_{c(2,2,2,1)} + 
+x_{(3, 2, 2)}W^{[1]}_{c(3,2,2,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+x_{(1, 3, 2)}W^{[1]}_{c(1,3,2,1)} + 
+x_{(2, 3, 2)}W^{[1]}_{c(2,3,2,1)} + 
+x_{(3, 3, 2)}W^{[1]}_{c(3,3,2,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+x_{(1, 1, 3)}W^{[1]}_{c(1,1,3,1)} + 
+x_{(2, 1, 3)}W^{[1]}_{c(2,1,3,1)} + 
+x_{(3, 1, 3)}W^{[1]}_{c(3,1,3,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+x_{(1, 2, 3)}W^{[1]}_{c(1,2,3,1)} + 
+x_{(2, 2, 3)}W^{[1]}_{c(2,2,3,1)} + 
+x_{(3, 2, 3)}W^{[1]}_{c(3,2,3,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+x_{(1, 3, 3)}W^{[1]}_{c(1,3,3,1)} + 
+x_{(2, 3, 3)}W^{[1]}_{c(2,3,3,1)} + 
+x_{(3, 3, 3)}W^{[1]}_{c(3,3,3,1)} + b^{[1]}_{(1,1)}
+$$&lt;/div&gt;
+&lt;p&gt;Ok great! So we figured out how to calculate &lt;span class="math"&gt;\(z^{[1]}_{(1,1,1)}\)&lt;/span&gt;. Only &lt;span class="math"&gt;\(4 * 4 * 6 - 1 = 95\)&lt;/span&gt; more calculations to go. Just kidding, we aren't going to go through each calculation. I do want to talk about how we decide which values of &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; we choose to multiply with the values in &lt;span class="math"&gt;\(W^{[1]}_{c}\)&lt;/span&gt;. If we follow the formula that we outlined earlier, we end up 'sliding' over the values of &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;. I think a gif will help demonstrate what I mean:&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/conv.gif" width="400" title="[conv_gif]" alt="[conv_gif]"&gt;&lt;/p&gt;
+&lt;p&gt;So in this gif, we calculated &lt;span class="math"&gt;\(z^{[1]}_{(1,1,1)}\)&lt;/span&gt; through &lt;span class="math"&gt;\(z^{[1]}_{(3,3,1)}\)&lt;/span&gt;, which are all the outputs that depend on the first filter of &lt;span class="math"&gt;\(W^{[1]}_c\)&lt;/span&gt;. We would then continue this process 5 more times for the other 5 filters of &lt;span class="math"&gt;\(W^{[1]}_c\)&lt;/span&gt;. The final dimensions of our output, &lt;span class="math"&gt;\(z^{[1]}\)&lt;/span&gt; would therefore be &lt;span class="math"&gt;\((3,3,6)\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;Notice that each channel in our output shrunk in height and width by &lt;span class="math"&gt;\(2\)&lt;/span&gt;, from &lt;span class="math"&gt;\((5,5)\)&lt;/span&gt; to &lt;span class="math"&gt;\((3,3)\)&lt;/span&gt;. Is this a problem? Yes, because it has been demonstrated that deeper architectures (more layers) perform better. If we are shrinking our dimensions from layer to layer, we are losing a lot of information. We could reduce the size of conv filters (&lt;span class="math"&gt;\(W_{c}\)&lt;/span&gt;), but if we do that we are limiting the ability of the filter to learn representations within the data.&lt;/p&gt;
+&lt;p&gt;The creators of VGG-16 recognized this problem, and used something which allowed them to maintain the height and width when they transitioned between the input and output of a conv layer. That something is called same padding.&lt;/p&gt;
+&lt;h3&gt;Same Padding&lt;/h3&gt;
+&lt;p&gt;In order to prevent the problem of the height and width of layers shrinking, many people use something called same padding. Same padding allows us to maintain the height and width between the input and output of a convolution. Let's go back to our simplified example. Currently, we transition from &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, which is &lt;span class="math"&gt;\((5,5,3)\)&lt;/span&gt; to &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt;, which is &lt;span class="math"&gt;\((3,3,3)\)&lt;/span&gt;. If we wanted &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt; to have &lt;span class="math"&gt;\((5,5,3)\)&lt;/span&gt; we could 'pad' &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; with 0's. Let's define this transformation as &lt;span class="math"&gt;\(\textbf{s}^{[0]} = h_p(\textbf{x})\)&lt;/span&gt;, where &lt;span class="math"&gt;\(p\)&lt;/span&gt; is equal to the number of borders of &lt;span class="math"&gt;\(0\)&lt;/span&gt; we place around &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;. &lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_11.png" width="300" title="[VGG_11]" alt="[VGG_11]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;&lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; padded with one border of &lt;span class="math"&gt;\(0\)&lt;/span&gt;'s. We define this new tensor as &lt;span class="math"&gt;\(\textbf{s}^{[0]}\)&lt;/span&gt;&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;In the image above, &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; is padded with one border of &lt;span class="math"&gt;\(0\)&lt;/span&gt;'s. How do we know how many &lt;span class="math"&gt;\(0\)&lt;/span&gt;'s to add to make sure that our input &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; shares the same height and width as &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt;? There's a pretty easy formula to figure that out! So given a filter with height &lt;span class="math"&gt;\(f\)&lt;/span&gt; and width &lt;span class="math"&gt;\(f\)&lt;/span&gt; the padding (&lt;span class="math"&gt;\(p\)&lt;/span&gt;) is equal to:&lt;/p&gt;
+&lt;div class="math"&gt;$$p = \dfrac{f-1}{2}$$&lt;/div&gt;
+&lt;p&gt;By convention in computer vision, &lt;span class="math"&gt;\(f\)&lt;/span&gt; is almost always odd so we don't need to worry about a non-whole number padding.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;A quick note: All of the convolutional layers in VGGNet use the same stride size of 1. So we won't go into how this calculation changes when we increase the stride size.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;For our example filter, &lt;span class="math"&gt;\(f = 3\)&lt;/span&gt; and therefore we need &lt;span class="math"&gt;\(p = 1\)&lt;/span&gt; to use same padding.&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/pad.gif" width="400" title="[pad_gif]" alt="[pad_gif]"&gt;&lt;/p&gt;
+&lt;p&gt;Our gif now ticks up to &lt;span class="math"&gt;\(\textbf{z}^{[1]}_{(5,5,1)}\)&lt;/span&gt;, which shares the height and width of &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; and is what we wanted. &lt;/p&gt;
+&lt;p&gt;Alright, so now we've learned how to calculate &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt;, and it shares the same dimensions as &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; thanks to same padding. We need to do one more operation in order to get to our first hidden layer, &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt; which is the ReLU.&lt;/p&gt;
+&lt;h3&gt;ReLU Operation&lt;/h3&gt;
+&lt;p&gt;In my previous post describing &lt;a href="/forwardprop"&gt;forward propagation&lt;/a&gt; in a fully connected network, I talked about how a ReLU function works. ReLU is implemented for convolutional networks the same way it's implemented for fully connected networks. If our ReLU function is &lt;span class="math"&gt;\(g\)&lt;/span&gt;, then:&lt;/p&gt;
+&lt;div class="math"&gt;$$\textbf{a}^{[1]} = g(\textbf{z}^{[1]})$$&lt;/div&gt;
+&lt;p&gt;&lt;span class="math"&gt;\(g\)&lt;/span&gt; is applied elementwise to every element in &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt;. As we would expect, &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt; is &lt;span class="math"&gt;\((3,3,6)\)&lt;/span&gt; and shares the same dimensions as &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;With that, we have successfully transitions from the input layer &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; to the first hidden layer, &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt;. Before moving on I think it would be useful to talk about why we use convolutional layers instead of fully connected layers. Most of the following conversation comes from the chapter on Convolutional Networks from the &lt;a href="http://www.deeplearningbook.org/contents/convnets.html"&gt;Deep Learning Book&lt;/a&gt; and I highly recommend you check that out.&lt;/p&gt;
+&lt;h2&gt;Why ConvNets?&lt;/h2&gt;
+&lt;p&gt;There are two main reasons why we use convolutional layers over fully connected layers: &lt;strong&gt;sparse interactions&lt;/strong&gt; and &lt;strong&gt;parameter sharing&lt;/strong&gt;.&lt;/p&gt;
+&lt;h3&gt;Sparse Interactions&lt;/h3&gt;
+&lt;p&gt;What if we had used a fully connected layer instead of a convolutional layer in the preceding example? Recall that our input &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; had &lt;span class="math"&gt;\(224 * 224 * 3 = 150,528\)&lt;/span&gt; elements. The first hidden layer &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt; had &lt;span class="math"&gt;\(224 * 224 * 6 = 301,056\)&lt;/span&gt; elements. If we connected these two layers fully, we would need a weight for each combination. Which means we would need &lt;span class="math"&gt;\(150,528 * 301,056= 45,317,357,568\)&lt;/span&gt; weights, plus &lt;span class="math"&gt;\(301,056 * 1 = 301,056\)&lt;/span&gt; biases. Good lord, and that's just for the first layer.&lt;/p&gt;
+&lt;p&gt;In contrast, our first convolutional layer has &lt;span class="math"&gt;\(16 * 16 *  3 *  6 = 4608\)&lt;/span&gt; weight parameters and &lt;span class="math"&gt;\(6 * 1 = 6\)&lt;/span&gt; bias parameters. While we share those parameters between inputs (which we will discuss next), those parameters are connected to vastly less inputs than the parameters of a fully connected layer would, and therefore conv layers require orders of magnitude less memory (fewer parameters) and runtime (fewer operations).&lt;/p&gt;
+&lt;h3&gt;Parameter Sharing&lt;/h3&gt;
+&lt;p&gt;In a fully connected layer, we use each weight parameter one time, since each weight parameter connects one input element to one output element. In contrast, in a convolutional layer, we reuse each weight parameter multiple times. In the example above, the weight parameter  &lt;span class="math"&gt;\(W^{[1]}_{c(1,1,1,1)}\)&lt;/span&gt; is used a total of (&lt;span class="math"&gt;\(5 * 5 = 25\)&lt;/span&gt;) times, multiplying it by the input &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; after padding it with one border of 0's (&lt;span class="math"&gt;\(p = 0\)&lt;/span&gt;) to get &lt;span class="math"&gt;\(\textbf{s}^{[0]}\)&lt;/span&gt;. The elements of &lt;span class="math"&gt;\(\textbf{s}^{[0]}\)&lt;/span&gt; that we use are displayed below: &lt;/p&gt;
+&lt;div class="math"&gt;$$
+s^{[0]}_{(1,1,1)},
+s^{[0]}_{(1,2,1)},
+s^{[0]}_{(1,3,1)},
+s^{[0]}_{(1,4,1)},
+s^{[0]}_{(1,5,1)},
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+s^{[0]}_{(2,1,1)},
+s^{[0]}_{(2,2,1)},
+s^{[0]}_{(2,3,1)},
+s^{[0]}_{(2,4,1)},
+s^{[0]}_{(2,5,1)},
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+s^{[0]}_{(3,1,1)},
+s^{[0]}_{(3,2,1)},
+s^{[0]}_{(3,3,1)},
+s^{[0]}_{(3,4,1)},
+s^{[0]}_{(3,5,1)},
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+s^{[0]}_{(4,1,1)},
+s^{[0]}_{(4,2,1)},
+s^{[0]}_{(4,3,1)},
+s^{[0]}_{(4,4,1)},
+s^{[0]}_{(4,5,1)},
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+s^{[0]}_{(5,1,1)},
+s^{[0]}_{(5,2,1)},
+s^{[0]}_{(5,3,1)},
+s^{[0]}_{(5,4,1)},
+s^{[0]}_{(5,5,1)},
+$$&lt;/div&gt;
+&lt;p&gt;So how does parameter sharing help? Well, let's say that one filter detects the edges in a picture. We only need one set of weights to do this job across the entire image for each channel, since the operation won't change as we move across the image. In this case, parameter sharing is more efficient than using one weight parameter per pixel to connect it to the next layer. &lt;/p&gt;
+&lt;p&gt;A special case of parameter sharing is equivariance. CNN's are equivariant in the sense that if we translate an image of a corgi dog across an image, for example, the output will be the same, but just translated to where the corgi is in the image. This is not true for rotations or scale however, and these need to be handled separately.&lt;/p&gt;
+&lt;p&gt;In this section, we've discussed the transition from our input &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; to our first conv layer, &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt;. In order to make this transition, we transformed &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; to &lt;span class="math"&gt;\(\textbf{s}^{[0]}\)&lt;/span&gt; using same padding. Next, we applied a convolution using filter weights &lt;span class="math"&gt;\(\textbf{W}^{[1]}_c\)&lt;/span&gt; and added a bias &lt;span class="math"&gt;\(\textbf{b}^{[1]}\)&lt;/span&gt; to get &lt;span class="math"&gt;\(\textbf{z}^{[1]}\)&lt;/span&gt;. Next, we used the ReLU activation function to introduce nonlinearity elementwise to get &lt;span class="math"&gt;\(\textbf{a}^{[1]}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;div class="math"&gt;$$\textbf{x} \rightarrow \textbf{s}^{[0]} \rightarrow \textbf{z}^{[1]} \rightarrow \textbf{a}^{[1]}$$&lt;/div&gt;
+&lt;p&gt;Within VGG16, we use this same procedure 13 times, until we flatten our output and use 3 fully connected layers. Between conv layers, the creators of VGG16 interspersed pooling layers, which are used for downsampling. We will discuss them next.&lt;/p&gt;
+&lt;h1&gt;Pooling Layer&lt;/h1&gt;
+&lt;p&gt;We will focus our attention next on the pooling layer. In particular, we will focus on the transition between a conv layer &lt;span class="math"&gt;\(\textbf{a}^{[2]})\)&lt;/span&gt; and the first pooling layer &lt;span class="math"&gt;\(\textbf{m}^{[2]}\)&lt;/span&gt; in the architecture.&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_12.png" title="[VGG_12]" alt="[VGG_12]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of the architecture of VGG-16 with example Pooling Layer &lt;span class="math"&gt;\(\textbf{m}^{[2]}\)&lt;/span&gt; and preceding Conv Layer &lt;span class="math"&gt;\(\textbf{a}^{[2]}\)&lt;/span&gt; highlighted.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;We'll first deconstruct what happens in the pooling layer of the VGG16 architecture and then discuss the motivation behind pooling layers. Let's start! VGG16 uses a particular type of pooling operation called max pooling. The dimensions of the input &lt;span class="math"&gt;\(\textbf{a}^{[2]}\)&lt;/span&gt; are &lt;span class="math"&gt;\((224, 224, 64)\)&lt;/span&gt; and the dimensions of the output &lt;span class="math"&gt;\(\textbf{m}^{[2]}\)&lt;/span&gt; are &lt;span class="math"&gt;\((112, 112, 64)\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;Similar to our last example, let's simplify the dimensions to make it easier to work through the example. Let's make &lt;span class="math"&gt;\(\textbf{a}^{[2]}\)&lt;/span&gt; have dimensions &lt;span class="math"&gt;\((6, 6, 6)\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{m}^{[2]}\)&lt;/span&gt; have dimensions &lt;span class="math"&gt;\((3, 3, 6)\)&lt;/span&gt;. &lt;/p&gt;
+&lt;p&gt;Pooling has some similarities with convolutions. Like the convolutional operation, we are sliding over our input and performing a pooling operation. VGG16 uses max pooling, which takes the max value within the window. If we were to compute the &lt;span class="math"&gt;\(m^{[2]}_{(i,j,k)}\)&lt;/span&gt;, it would look like this:&lt;/p&gt;
+&lt;div class="math"&gt;$$m^{[2]}_{(i,j,k)} = \max_{i * s &amp;lt;= l &amp;lt; i * s + f, j * s &amp;lt;= l &amp;lt; j * s + f }a^{[2]}_{(l,m,k)}$$&lt;/div&gt;
+&lt;p&gt;Similar to our previous example, &lt;span class="math"&gt;\(i\)&lt;/span&gt; is the height, &lt;span class="math"&gt;\(j\)&lt;/span&gt; is the width, and &lt;span class="math"&gt;\(k\)&lt;/span&gt; is the channel of the output &lt;span class="math"&gt;\(\textbf{m}^{[2]}\)&lt;/span&gt;. &lt;span class="math"&gt;\(l\)&lt;/span&gt; and &lt;span class="math"&gt;\(m\)&lt;/span&gt; are the height and width of our input. The max pooling filter has height and width equal to &lt;span class="math"&gt;\(f\)&lt;/span&gt; and &lt;span class="math"&gt;\(s\)&lt;/span&gt; is the stride size. Stride size indicates how many elements we pass over for our operation. In our previous example, we used a stride size of 1. In this case, we use a stride size of 2. &lt;/p&gt;
+&lt;p&gt;How do we figure out how big of a filter to use to get an output that has dimensions &lt;span class="math"&gt;\((3,3,6)\)&lt;/span&gt; when our input has dimensions &lt;span class="math"&gt;\((6,6,6)\)&lt;/span&gt;? We can use a pretty useful formula. Assuming our input's height and width are equal and our output's height and width are equal, let's let &lt;span class="math"&gt;\(n_L\)&lt;/span&gt; represent the height and width of our input (in this case, &lt;span class="math"&gt;\(\textbf{a}^{[2]}\)&lt;/span&gt;) and &lt;span class="math"&gt;\(n_{L+1}\)&lt;/span&gt; represent the height and width of our output (in this case, &lt;span class="math"&gt;\(\textbf{m}^{[2]}\)&lt;/span&gt;). To find the height and width (&lt;span class="math"&gt;\(f\)&lt;/span&gt;) of the window we need to use for max pooling, we use:&lt;/p&gt;
+&lt;div class="math"&gt;$$n_{L+1} = \bigg \lfloor \dfrac{n_L + 2p - f}{s} + 1 \bigg \rfloor$$&lt;/div&gt;
+&lt;p&gt;Solving for &lt;span class="math"&gt;\(f\)&lt;/span&gt;:&lt;/p&gt;
+&lt;div class="math"&gt;$$f = n_L + 2p - s(n_{L+1} - 1)$$&lt;/div&gt;
+&lt;p&gt;Where &lt;span class="math"&gt;\(p\)&lt;/span&gt; is equal to the padding. Since we aren't using padding, we set &lt;span class="math"&gt;\(p = 0\)&lt;/span&gt;. And plugging in &lt;span class="math"&gt;\(n_L = 6\)&lt;/span&gt;, &lt;span class="math"&gt;\(s = 2\)&lt;/span&gt;, and &lt;span class="math"&gt;\(n_{L+1} = 3\)&lt;/span&gt;, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$f = 6 + 2*0 - 2(3 - 1)$$&lt;/div&gt;
+&lt;div class="math"&gt;$$f = 2$$&lt;/div&gt;
+&lt;p&gt;So the height and width of our window should be equal to &lt;span class="math"&gt;\(2\)&lt;/span&gt;. And just to be clear, this is a pooling window, which means that it's not a filter of trainable parameters like in a convolutional layer. But, we can use this same formula to calculate dimensions of a filter in a convolutional layer.&lt;/p&gt;
+&lt;p&gt;Plugging in &lt;span class="math"&gt;\(s = 2\)&lt;/span&gt;, &lt;span class="math"&gt;\(f = 2\)&lt;/span&gt; into our equation, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$m^{[2]}_{(i,j,k)} = \max_{i * 2 &amp;lt;= l &amp;lt; i * 2 + 2, j * 2 &amp;lt;= l &amp;lt; j * 2 + 2 }a^{[2]}_{(l,m,k)}$$&lt;/div&gt;
+&lt;p&gt;So essentially, to get an element in &lt;span class="math"&gt;\(\textbf{m}^{[2]}\)&lt;/span&gt;, we take a &lt;span class="math"&gt;\(2x2\)&lt;/span&gt; window of &lt;span class="math"&gt;\(\textbf{a}^{[2]}\)&lt;/span&gt; and return the maximum value in that window. We then slide over by &lt;span class="math"&gt;\(2\)&lt;/span&gt; and do it again.&lt;/p&gt;
+&lt;p&gt;Great, so now that we know how the max pooling operation works, why do we use it?&lt;/p&gt;
+&lt;h3&gt;Why Max Pooling?&lt;/h3&gt;
+&lt;p&gt;There are a few reasons why we use max pooling. The first is that with each set of convolutional layers in VGG16, you may notice that we are increasing the depth, or the amount of channels. In the layer before we flatten our tensor to use it in a fully-connected layer, we have a depth of &lt;span class="math"&gt;\(512\)&lt;/span&gt;. Depth is important because it signfies the structured information that the network has learned about the input. However, it would not be memory efficient to maintain our original height and width of &lt;span class="math"&gt;\(224\)&lt;/span&gt; and end up with a depth of &lt;span class="math"&gt;\(512\)&lt;/span&gt;. Pooling allows us to take a summary statistic (in this case, the max) of a window within a convulational layer and send it to the next level. In essence, we are roughly taking the most important 'activations' from the previous layer and sending it to the next layer, thereby reducing the height and width and decreasing the memory requirements. As an example of this, in the final pooling layer, we end up with a tensor with dimensions &lt;span class="math"&gt;\((7,7,512)\)&lt;/span&gt;. This is sometimes called downsampling.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;You can see that this trend happens in many convolutional network architectures. As we go deeper, we increase the depth or number of channels of our layer (as a result of a convolution) and decrease the height and width of our layer (as a result of pooling)&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;The second is it makes the network invariant to small translations in the input. What this means is that we change the input slightly, the max pooling outputs will stay the same since it will still report the maximum value in the window. This is important in image classification, because the location of, say a nose, won't always be in the same location at all times.&lt;/p&gt;
+&lt;p&gt;Alright, so we've discussed an example of a pooling layer. Next, we will briefly talk about the flat layer and softmax layers.&lt;/p&gt;
+&lt;h2&gt;Flat Layer&lt;/h2&gt;
+&lt;p&gt;In a Flat Layer, we take as input the final max pooling layer (&lt;span class="math"&gt;\(\textbf{m}^{[13]}\)&lt;/span&gt;) and flatten it, to get as output a flat layer &lt;span class="math"&gt;\(\textbf{f}^{[13]}\)&lt;/span&gt; with dimensions &lt;span class="math"&gt;\((25,088, 1)\)&lt;/span&gt;. The &lt;span class="math"&gt;\(25,088\)&lt;/span&gt; comes from multiplying all the dimensions of the input layer (&lt;span class="math"&gt;\(7 * 7 * 512 = 25,088\)&lt;/span&gt;). The reason that we do this is because fully connected layers take as input a row (or column, depending on the math notation) vector as opposed to a tensor. So, in this layer nothing too crazy happens, we are just changing the dimension to prepare to use the fully connected layers.&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_13.png" title="[VGG_13]" alt="[VGG_13]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Diagram of the architecture of VGG-16 with example Flat Layer &lt;span class="math"&gt;\(\textbf{f}^{[13]}\)&lt;/span&gt; and preceding Pooling Layer &lt;span class="math"&gt;\(\textbf{m}^{[13]}\)&lt;/span&gt; highlighted.&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;Fully Connected Layer&lt;/h2&gt;
+&lt;p&gt;After our 13 convolutional layers, we connect our flat layer to 3 fully connected layers. In a &lt;a href="/forwardprop"&gt;previous post&lt;/a&gt; I talk about how fully connected layers work so I won't go into too much detail about them here. What I do want to discuss is why we use fully connected layers at all. The reason why we wouldn't want to use them is the huge amount of weight parameters in the first fully connected layer:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;span class="math"&gt;\(512 * 7 * 7 * 4096 = 102,760,448\)&lt;/span&gt; weight parameters connected the flat layer to the first fully connected layer!&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;We can think of the convolutional and pooling layers as creating useful representations of the data. Remember that both operations are local in the sense that they are taking into consideration windows of the data. Fully connected layers, in contrast, are global and connect every value in the previous max pooling layer (&lt;span class="math"&gt;\(\textbf{m}^{[13]}\)&lt;/span&gt;) together.&lt;/p&gt;
+&lt;p&gt;The final step is to connect our last fully connected layer (&lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt;) to our output layer (&lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt;). In order to make this transition, we have to use the softmax function, which is what we will discuss next.&lt;/p&gt;
+&lt;h2&gt;Softmax Layer&lt;/h2&gt;
+&lt;p&gt;In order to make the final transition from fully connected to softmax layer, we use the softmax function. Let's discuss how the softmax function works next.&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_14.png" title="[VGG_14]" alt="[VGG_14]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;It's difficult to see, but this is a diagram of the architecture of VGG-16 with example Softmax Layer &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt; and preceding Fully Connected Layer &lt;span class="math"&gt;\(\textbf{a}^{[15]}\)&lt;/span&gt; highlighted. Squint and look to the right.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;The transition from the fully connected layer &lt;span class="math"&gt;\(\textbf{a}^{[15]}\)&lt;/span&gt; to the softmax layer &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt; starts off as any fully connected layer usually does. We apply a matrix multiplication using &lt;span class="math"&gt;\(\textbf{W}^{[16]}\)&lt;/span&gt; and add a bias &lt;span class="math"&gt;\(\textbf{b}^{[16]}\)&lt;/span&gt; to attain &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt;. &lt;span class="math"&gt;\(\textbf{W}^{[16]}\)&lt;/span&gt; has dimensions &lt;span class="math"&gt;\((1000, 4096)\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{b}^{[16]}\)&lt;/span&gt; has dimensions &lt;span class="math"&gt;\((100, 1)\)&lt;/span&gt;, which makes sense, since &lt;span class="math"&gt;\(\textbf{a}^{[15]}\)&lt;/span&gt; is a row vector with dimensions &lt;span class="math"&gt;\((4096, 1)\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{z}^{[15]}\)&lt;/span&gt; is a row vector with dimensions &lt;span class="math"&gt;\((1000, 1)\)&lt;/span&gt;.&lt;/p&gt;
+&lt;div class="math"&gt;$$\textbf{z}^{[16]} = \textbf{W}^{[16]}\textbf{a}^{[15]} + \textbf{b}^{[16]}$$&lt;/div&gt;
+&lt;p&gt;And this point, we would normally use a ReLU function to introduce nonlinearity. Instead, we are going to use the softmax function. This is similar to when we used the sigmoid function to produce the last fully connected layer in the previous post on &lt;a href="/forwardprop"&gt;forward propagation&lt;/a&gt; in a fully connected neural network. We'll denote the softmax function with (&lt;span class="math"&gt;\(\sigma\)&lt;/span&gt;). How do we compute the &lt;span class="math"&gt;\(ith\)&lt;/span&gt; element in &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt;? We do the following:&lt;/p&gt;
+&lt;div class="math"&gt;$$a^{[16]}_{i,1} = \sigma_{(i, 1)}(\textbf{z}^{[16]})$$&lt;/div&gt;
+&lt;div class="math"&gt;$$a^{[16]}_{i,1} = \dfrac{e^{z^{[16]}_{i,1}}}{\sum_{j = 1}^{1000}e^{z^{[16]}_{j,1}}}$$&lt;/div&gt;
+&lt;p&gt;So in order to compute the &lt;span class="math"&gt;\(ith\)&lt;/span&gt; element of &lt;span class="math"&gt;\(a^{[16]}_{i,1}\)&lt;/span&gt;, we take &lt;span class="math"&gt;\(e\)&lt;/span&gt; to the power of &lt;span class="math"&gt;\(z^{[16]}_{i,1}\)&lt;/span&gt; and divide it by the sum of &lt;span class="math"&gt;\(e\)&lt;/span&gt; to the power of all the elements in &lt;span class="math"&gt;\(\textbf{z}\)&lt;/span&gt;. And after applying this activation function, we get a nice vector &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt; who's elements sum to &lt;span class="math"&gt;\(1\)&lt;/span&gt;. Note that &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt; is equal to &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt;. Previously, we discussed how we wanted our output (&lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt;) to be the probability that the training example image comes from one of &lt;span class="math"&gt;\(1,000\)&lt;/span&gt; classes. &lt;/p&gt;
+&lt;div class="math"&gt;$$
+\hat{\textbf{y}} =
+\begin{bmatrix}
+\hat{y}_{1} \\\\
+\hat{y}_{2} \\\\ 
+\vdots \\\\
+\hat{y}_{1000}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Where each &lt;span class="math"&gt;\(\hat{y}_{i}\)&lt;/span&gt; is equal to the probability that &lt;span class="math"&gt;\(y\)&lt;/span&gt; is equal to class &lt;span class="math"&gt;\(i\)&lt;/span&gt; given the input image &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, or:&lt;/p&gt;
+&lt;div class="math"&gt;$$\hat{y}_{i} = P(y = i | \textbf{x})$$&lt;/div&gt;
+&lt;p&gt;After applying the softmax activation function, we now have a vector of probabilities who sum to 1.&lt;/p&gt;
+&lt;p&gt;So in the first part of this blog post, we broke down the different types of layers within VGG-16. We talked about conv layers, max pooling layers, flat layers, fully connected layers and finally the softmax layer that outputs the class probabilities. Since there is a lot of repetition within the model (which makes it appealing) we didn't go through each layer's dimensions and operations that are used to produce it. I want to wrap this section up by taking the architecture picture that I've used throughout this post, flip it, and label it with all the different types of layers we've discussed.&lt;/p&gt;
+&lt;p&gt;&lt;img src="/images/VGG_15.png" title="[VGG_15]" alt="[VGG_15]"&gt;&lt;/p&gt;
+&lt;h1&gt;Backpropagation for VGG16&lt;/h1&gt;
+&lt;p&gt;Next up, I want to go into some detail about how backpropagation works for VGG-16. For each layer, our objective is to calculate two things: the partial derivative of the cost function &lt;span class="math"&gt;\(J\)&lt;/span&gt; with respect to that layer's activations and the partial derivative of the cost function with respect to the trainable parameters associated with that layer.&lt;/p&gt;
+&lt;p&gt;Before we start caluclating the partial derivatives for each example layer, let's talk about the cost function &lt;span class="math"&gt;\(J\)&lt;/span&gt;.&lt;/p&gt;
+&lt;h2&gt;Understanding the Cost Function&lt;/h2&gt;
+&lt;p&gt;In our previous post on &lt;a href="/backprop"&gt;backprop&lt;/a&gt; our objective was to predict &lt;span class="math"&gt;\(y\)&lt;/span&gt;, which could be either &lt;span class="math"&gt;\(0\)&lt;/span&gt; or &lt;span class="math"&gt;\(1\)&lt;/span&gt;. Our prediction was a scalar &lt;span class="math"&gt;\(\hat{y}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;For the Imagenet task however, our prediction &lt;span class="math"&gt;\(\hat{y}\)&lt;/span&gt; is a vector with dimensions &lt;span class="math"&gt;\((1000, 1)\)&lt;/span&gt;. Since we are using a softmax activation in our final layer, each value corresponds with the probability we think the training example belongs to the class label.&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\hat{\textbf{y}} =
+\begin{bmatrix}
+\hat{y}_{1} \\\\
+\hat{y}_{2} \\\\ 
+\vdots \\\\
+\hat{y}_{i} \\\\ 
+\vdots \\\\
+\hat{y}_{1000}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Where &lt;span class="math"&gt;\(\hat{y}_{i} = P(y = i | \textbf{x})\)&lt;/span&gt;. &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; also has the attribute that the elements in it sum to &lt;span class="math"&gt;\(1\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;The loss function that we used for a single training example in our fully connected network was:&lt;/p&gt;
+&lt;div class="math"&gt;$$\mathcal{L}(\hat{y}, y) = -ylog(\hat{y}) - (1-y)log(1 -\hat{y})$$&lt;/div&gt;
+&lt;p&gt;And the loss function that we use for a single training example for VGG16 is very similar:&lt;/p&gt;
+&lt;div class="math"&gt;$$\mathcal{L}(\hat{\textbf{y}}, \textbf{y}) = -\sum_{i=1}^{1000} y_i log(\hat{y}_i)$$&lt;/div&gt;
+&lt;p&gt;Let's deconstruct what's happening in this loss function. Basically, for every possible image label (there are 1000 possible labels) we are calculating what is sometimes called the 'cross entropy' &lt;span class="math"&gt;\(y_i log(\hat{y}_i)\)&lt;/span&gt; between our prediction for that label &lt;span class="math"&gt;\(\hat{y}_i\)&lt;/span&gt; and the actual value &lt;span class="math"&gt;\(y_i\)&lt;/span&gt;. If you look at the loss function right above it, it's essentially the same as the one directly preceding but for &lt;span class="math"&gt;\(2\)&lt;/span&gt; instead of &lt;span class="math"&gt;\(1000\)&lt;/span&gt; classes. We just choose to define the second class as being &lt;span class="math"&gt;\(1-y\)&lt;/span&gt;, and our prediction as &lt;span class="math"&gt;\(1-\hat{y}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;We want to minimize the loss function, which means we want to maximize the cross entropy &lt;span class="math"&gt;\(y_i log(\hat{y}_i)\)&lt;/span&gt;. Recall that each image belongs to only &lt;span class="math"&gt;\(1\)&lt;/span&gt; of &lt;span class="math"&gt;\(1000\)&lt;/span&gt; classes. If our training example image was a dog and belonged to class &lt;span class="math"&gt;\(5\)&lt;/span&gt;, &lt;span class="math"&gt;\(y_5 = 1\)&lt;/span&gt; and all other values (&lt;span class="math"&gt;\(y_1, ... y_4, y_6,...y_{1000}\)&lt;/span&gt;) would be equal to &lt;span class="math"&gt;\(0\)&lt;/span&gt;:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\textbf{y} =
+\begin{bmatrix}
+0 \\\\
+0 \\\\
+0 \\\\
+0 \\\\ 
+1 \\\\ 
+\vdots \\\\
+0
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;So the cross entropy for the value &lt;span class="math"&gt;\(y_5\)&lt;/span&gt; becomes &lt;span class="math"&gt;\(1 * log(\hat{y}_5)\)&lt;/span&gt; and the cross entropy for all other values become &lt;span class="math"&gt;\(0 * log(\hat{y}_i)\)&lt;/span&gt;. And so, in order to maximize the cross entropy, we just need to maximize &lt;span class="math"&gt;\(\hat{y}_5\)&lt;/span&gt;, which is the probability that given the data (pixels) of our training example image &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; it belongs to class &lt;span class="math"&gt;\(5\)&lt;/span&gt;. So it makes sense that this would be our loss function, since we want to maximize the probability that our training example comes from the correct class.&lt;/p&gt;
+&lt;p&gt;Where did this loss function come from? In our &lt;a href="/backprop"&gt;fully connected network example&lt;/a&gt; we showed how we could derive our loss function for binary classification using the probability mass function for a Bernoulli distribution. We will take a similar approach and look at the probability mass function for a categorical (or multinoulli) distribution:&lt;/p&gt;
+&lt;div class="math"&gt;$$p(\textbf{y} | \hat{\textbf{y}}, \textbf{x}) = \prod_{i=1}^{1000} \hat{y}_i^{y_i}$$&lt;/div&gt;
+&lt;p&gt;This basically reads as the probability that given our example &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; and prediction &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; we actually have an example with labels &lt;span class="math"&gt;\(\textbf{y}\)&lt;/span&gt; is equal to the product of &lt;span class="math"&gt;\(\hat{y}_i^{y_i}\)&lt;/span&gt; for each class label &lt;span class="math"&gt;\(i\)&lt;/span&gt;. And if we take the log of both sides, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$log \ p(\textbf{y} | \hat{\textbf{y}}, \textbf{x}) = log \ \prod_{i=1}^{1000} \hat{y}_i^{y_i}$$&lt;/div&gt;
+&lt;div class="math"&gt;$$log \ p(\textbf{y} | \hat{\textbf{y}}, \textbf{x}) = \sum_{i=1}^{1000} log \ \hat{y}_i^{y_i}$$&lt;/div&gt;
+&lt;p&gt;And notice the right side is equal &lt;span class="math"&gt;\(-\mathcal{L}\)&lt;/span&gt;:&lt;/p&gt;
+&lt;div class="math"&gt;$$log \ p(\textbf{y} | \hat{\textbf{y}}, \textbf{x}) = -\mathcal{L}(\hat{\textbf{y}}, \textbf{y}) $$&lt;/div&gt;
+&lt;div class="math"&gt;$$\mathcal{L}(\hat{\textbf{y}}, \textbf{y}) = -log \ p(\textbf{y} | \hat{\textbf{y}}, \textbf{x})$$&lt;/div&gt;
+&lt;p&gt;So when we say we want to minimize &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt;, we really mean we want to maximize the probability that &lt;span class="math"&gt;\(\textbf{y}\)&lt;/span&gt; is equal to it's value given our prediction &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt; and feature vector &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, given that we believe &lt;span class="math"&gt;\(\textbf{y}\)&lt;/span&gt; belongs to a categorical (or multillouni) distribution.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Since log increases monotonically, maximizing &lt;span class="math"&gt;\(p(\textbf{y} | \hat{\textbf{y}}, \textbf{x})\)&lt;/span&gt; and maximizing log \ &lt;span class="math"&gt;\(p(\textbf{y} | \hat{\textbf{y}}, \textbf{x})\)&lt;/span&gt; is the same. &lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;So this is our loss function &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; which we use to determine how well our model is predicting the class label for a single training example &lt;span class="math"&gt;\(i\)&lt;/span&gt; given the pixels of the image &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt;. But what if we were interested in how well our model was performing for a batch of &lt;span class="math"&gt;\(m\)&lt;/span&gt; training examples? We could take the average of our losses &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; over the &lt;span class="math"&gt;\(m\)&lt;/span&gt; training examples and call this our cost function, &lt;span class="math"&gt;\(J\)&lt;/span&gt;:&lt;/p&gt;
+&lt;div class="math"&gt;$$J = \dfrac{1}{m}\sum^m_{i = 1} \mathcal{L(\hat{\textbf{y}}^{(i)},\textbf{y}^{(i)})}$$&lt;/div&gt;
+&lt;p&gt;We calculate the cost &lt;span class="math"&gt;\(J\)&lt;/span&gt; for our &lt;span class="math"&gt;\(m\)&lt;/span&gt; training examples, and then calculate two things: (1) the partial derivative of the cost function &lt;span class="math"&gt;\(J\)&lt;/span&gt; with respect to that layer's activations and (2) the partial derivative of the cost function with respect to the trainable parameters associated with that layer. We reshape (2) into gradients and then update the trainable parameters (which is essentially batch gradient descent) and use (1) to calculate the partial derivative of the cost function with respect to the trainable parameters in the previous layer (which is backpropagation).&lt;/p&gt;
+&lt;p&gt;For VGG16, we use a batch size of &lt;span class="math"&gt;\(m = 256\)&lt;/span&gt;, so our cost function becomes:&lt;/p&gt;
+&lt;div class="math"&gt;$$J = \dfrac{1}{256}\sum^{256}_{i = 1} \mathcal{L(\hat{\textbf{y}}^{(i)},\textbf{y}^{(i)})}$$&lt;/div&gt;
+&lt;p&gt;Which simplifies to become:&lt;/p&gt;
+&lt;div class="math"&gt;$$J = -\dfrac{1}{256}\sum^{256}_{i = 1} \sum_{i=1}^{1000} y_i log(\hat{y}_i)$$&lt;/div&gt;
+&lt;p&gt;Great, so now we've defined our cost function. We now move to calculating the partial derivatives for each type of layer. Before moving forward I wanted to point something out. Let's say we are calculating the partial derivative of &lt;span class="math"&gt;\(J\)&lt;/span&gt; with respect to the weights in layer &lt;span class="math"&gt;\(j\)&lt;/span&gt;:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial J}{\partial \textbf{W}^{[j]}} =  \dfrac{\partial}{\partial \textbf{W}^{[j]}} \dfrac{1}{256}\sum^{256}_{i = 1} \mathcal{L(\hat{\textbf{y}}^{(i)},\textbf{y}^{(i)})}$$&lt;/div&gt;
+&lt;p&gt;Notice that the differentiation on the right side can be placed inside the summation:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial J}{\partial \textbf{W}^{[j]}} =  \dfrac{1}{256}\sum^{256}_{i = 1} \dfrac{\partial\mathcal{L}}{\partial \textbf{W}^{[j]}}$$&lt;/div&gt;
+&lt;p&gt;So for every batch of 256 training examples &lt;span class="math"&gt;\(\textbf{x}^{[i]}\)&lt;/span&gt;, we calculate the partial derivative with respect to the loss &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; for each trainable parameter, and then take the average of those 256 partial derivatives of the losses &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; to get the partial derivative of our cost function &lt;span class="math"&gt;\(J\)&lt;/span&gt; with respect to the trainable parameters.&lt;/p&gt;
+&lt;p&gt;Notice that we can calculate these 256 sets of partial derivatives in parallel, since they don't depend on each other. This is one of the ways we can parallelize backpropagation efficiently using GPUs.&lt;/p&gt;
+&lt;p&gt;In any case, instead of calculating the partial derivatives of &lt;span class="math"&gt;\(J\)&lt;/span&gt;, we will just calculate the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; for a single training example &lt;span class="math"&gt;\(\textbf{x}^{[i]}\)&lt;/span&gt; with the knowledge that we can just take the average of all the partial derivatives across the 256 examples in our batch to get the partial derivative of &lt;span class="math"&gt;\(J\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;Before moving forward, if you haven't checked out my blog post on &lt;a href="/backprop"&gt;backprop&lt;/a&gt; it might be useful, since I'm using a lot of the same concepts (e.g. jacobian matrix, distinction between partial derivative and gradients)&lt;/p&gt;
+&lt;h2&gt;Backprop for the Softmax Layer&lt;/h2&gt;
+&lt;p&gt;&lt;img src="/images/VGG_16.png" title="[VGG_16]" alt="[VGG_16]"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Softmax layer is highlighted on the far right.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;The last layer of VGG-16 is a fully connected layer with a softmax activation. Since it is a fully connected layer, it has trainable parameters &lt;span class="math"&gt;\(\textbf{W}^{[16]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{b}^{[16]}\)&lt;/span&gt; and we therefore need to calculate the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to both &lt;span class="math"&gt;\(\textbf{W}^{[16]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{b}^{[16]}\)&lt;/span&gt; which we can calculate the gradients as well as the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt;, which can be used to backpropagate the error to the preceding layer:&lt;/p&gt;
+&lt;div class="math"&gt;$$\bigg ( d\textbf{W}^{[16]}, d\textbf{b}^{[16]}, \dfrac{\partial \mathcal{L}}{\partial \textbf{z}^{[16]}} \bigg )$$&lt;/div&gt;
+&lt;p&gt;Let's focus our attention on calculating the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt;. We can use the chain rule to rewrite this partial derivative as:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial \textbf{z}^{[16]}} = \dfrac{\partial \mathcal{L}}{\partial \textbf{a}^{[16]}}\dfrac{\partial \textbf{a}^{[16]}}{\partial \textbf{z}^{[16]}}$$&lt;/div&gt;
+&lt;p&gt;So step &lt;span class="math"&gt;\(1\)&lt;/span&gt; is to figure out the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt;. Recall that the softmax layer &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt; is equal to our prediction for the class labels, &lt;span class="math"&gt;\(\hat{\textbf{y}}\)&lt;/span&gt;
+so we can write our loss function as:&lt;/p&gt;
+&lt;div class="math"&gt;$$\mathcal{L}(\textbf{a}^{[16]}, \textbf{y}) = -\sum_{i=1}^{1000} y_i log(a^{[16]}_{(i,1)})$$&lt;/div&gt;
+&lt;p&gt;Recall that &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; is a scalar value while &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt; is a column vector with dimensions &lt;span class="math"&gt;\((1000, 1)\)&lt;/span&gt;. The partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt; as represented as a Jacobian matrix is therefore &lt;span class="math"&gt;\((1, 1000)\)&lt;/span&gt;. &lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{a}^{[16]}} = 
+\begin{bmatrix}
+\dfrac{\partial \mathcal{L}}{\partial a^{[16]}_{(1,1)}} &amp;amp;
+\dfrac{\partial \mathcal{L}}{\partial a^{[16]}_{(2,1)}} &amp;amp;
+\dots &amp;amp;
+\dfrac{\partial \mathcal{L}}{\partial a^{[16]}_{(1000,1)}} 
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Notice that the first dimension of the Jacobian matrix is equal to the number of values in our output &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; which is &lt;span class="math"&gt;\(1\)&lt;/span&gt;, and the second dimension is equal to the number of values in our input &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt;, which is &lt;span class="math"&gt;\(1000\)&lt;/span&gt;. We'll continue to use this formulation in the rest of the blog post.&lt;/p&gt;
+&lt;p&gt;Let's take the first value of the Jacobian, the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(a^{[16]}_{(1,1)}\)&lt;/span&gt;. &lt;/p&gt;
+&lt;div class="math"&gt;$$\mathcal{L}(\textbf{a}^{[16]}, \textbf{y}) = -\sum_{i=1}^{1000} y_i log(a^{[16]}_{(1,1)})$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\mathcal{L}(\textbf{a}^{[16]}, \textbf{y}) = -y_1 log(a^{[16]}_{(1,1)})-y_2 log(a^{[16]}_{(2,1)}) \dots -y_1000 log(a^{[16]}_{(1000,1)})$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial a^{[16]}_{(1,1)}} = -\dfrac{y_1}{a^{[16]}_{(1,1)}} + 0 + \dots + 0$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial a^{[16]}_{(1,1)}} = -\dfrac{y_1}{a^{[16]}_{(1,1)}}$$&lt;/div&gt;
+&lt;p&gt;So applying this to every partial derivative in the Jacobian, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{a}^{[16]}} = 
+\begin{bmatrix}
+-\dfrac{y_1}{a^{[16]}_{(1,1)}} &amp;amp;
+-\dfrac{y_2}{a^{[16]}_{(2,1)}} &amp;amp;
+\dots &amp;amp;
+-\dfrac{y_{1000}}{a^{[16]}_{(1000,1)}}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Notice for any given training example &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, its label &lt;span class="math"&gt;\(y\)&lt;/span&gt; will have a &lt;span class="math"&gt;\(1\)&lt;/span&gt; for its class and &lt;span class="math"&gt;\(0\)&lt;/span&gt; for all the others. So let's say for a random training example &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt; it has the label &lt;span class="math"&gt;\(3\)&lt;/span&gt;, meaning &lt;span class="math"&gt;\(y_3 = 1\)&lt;/span&gt; and all the others are &lt;span class="math"&gt;\(0\)&lt;/span&gt;. So the partial derivative will look like this:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{a}^{[16]}} = 
+\begin{bmatrix}
+0 &amp;amp;
+0 &amp;amp;
+-\dfrac{y_3}{a^{[16]}_{(3,1)}} &amp;amp;
+\dots &amp;amp;
+0
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;What this means is that we will only update the weights that relate to the third activation of the softmax layer, which makes sense, since we would only want to update the activation that corresponds with the true class label. We just calculated the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt;. Let's now work on the partial derivative of &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt;. We'll start by analyzing it's Jacobian matrix:&lt;/p&gt;
+&lt;div class="math"&gt;$$ \dfrac{\partial \textbf{a}^{[16]}}{\partial \textbf{z}^{[16]}} = 
+\begin{bmatrix}
+\\
+\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(1, 1)}} &amp;amp;
+\dotsc &amp;amp;
+\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(1000, 1)}} \\\\
+\vdots &amp;amp; \ddots &amp;amp; \vdots \\\\
+\dfrac{\partial a^{[16]}_{(1000,1)}}{\partial z^{[16]}_{(1, 1)}} &amp;amp;
+\dotsc &amp;amp;
+\dfrac{\partial a^{[16]}_{(1000,1)}}{\partial z^{[16]}_{(1000, 1)}} \\\\
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;The partial derivative of &lt;span class="math"&gt;\(\textbf{a}^{[16]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt; has dimensions &lt;span class="math"&gt;\((1000, 1000)\)&lt;/span&gt;. Similar to before let's see if we can calculate the first value in the Jacobian Matrix, the partial derivative of &lt;span class="math"&gt;\(a^{[16]}_{(1,1)}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(z^{[16]}_{(1,1)}\)&lt;/span&gt;. We start with the formula of the softmax activation, that we defined in the previous post on &lt;a href="/vgg_forwardprop"&gt;forward propagation&lt;/a&gt;.&lt;/p&gt;
+&lt;div class="math"&gt;$$a^{[16]}_{(1,1)} = \sigma_{(1,1)}(\textbf{z}^{[16]})$$&lt;/div&gt;
+&lt;div class="math"&gt;$$a^{[16]}_{(1,1)} = \dfrac{e^{z^{[16]}_{(1,1)}}}{\sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}}}$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(1,1)}} = \dfrac{\partial}{\partial z^{[16]}_{(1,1)}}\dfrac{e^{z^{[16]}_{(1,1)}}}{\sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}}}$$&lt;/div&gt;
+&lt;p&gt;To calculate this partial derivative, we use the quotient rule for derivatives and get:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(1,1)}} = \dfrac{e^{z^{[16]}_{(1,1)}} * \sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}} - e^{2z^{[16]}_{(1,1)}}}{\big( \sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}} \big) ^ 2}$$&lt;/div&gt;
+&lt;p&gt;We can separate the term on the RHS into two terms:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(1,1)}} = \dfrac{e^{z^{[16]}_{(1,1)}}}{\sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}}} - \dfrac{e^{2z^{[16]}_{(1,1)}}}{\big( \sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}} \big) ^ 2}$$&lt;/div&gt;
+&lt;p&gt;Substituting the softmax function &lt;span class="math"&gt;\(\sigma_{(1,1)}\)&lt;/span&gt; back in we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(1,1)}} = \sigma_{(1,1)}(\textbf{z}^{[16]}) - \sigma_{(1,1)}(\textbf{z}^{[16]})^2$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(1,1)}} = \sigma_{(1,1)}(\textbf{z}^{[16]})(1 - \sigma_{(1,1)}(\textbf{z}^{[16]}))$$&lt;/div&gt;
+&lt;p&gt;And using the fact that &lt;span class="math"&gt;\(a^{[16]}_{(i,1)} = \sigma_{(i,1)}(\textbf{z}^{[16]})\)&lt;/span&gt;, we can simplify the partial derivative to become:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(1,1)}} = a^{[16]}_{(1,1)}(1 - a^{[16]}_{(1,1)})$$&lt;/div&gt;
+&lt;p&gt;The partial derivative of &lt;span class="math"&gt;\(a^{[16]}_{(i,1)}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(z^{[16]}_{(j,1)}\)&lt;/span&gt; looks like the calculation above when &lt;span class="math"&gt;\(i=j\)&lt;/span&gt;. What happens to the partial derivative when &lt;span class="math"&gt;\(i \neq j\)&lt;/span&gt;?&lt;/p&gt;
+&lt;p&gt;Let's take the example of the partial derivative of &lt;span class="math"&gt;\(a^{[16]}_{(1,1)}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(z^{[16]}_{(2,1)}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;div class="math"&gt;$$a^{[16]}_{(1,1)} = \sigma_{(2,1)}(\textbf{z}^{[16]})$$&lt;/div&gt;
+&lt;div class="math"&gt;$$a^{[16]}_{(1,1)} = \dfrac{e^{z^{[16]}_{(2,1)}}}{\sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}}}$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(2,1)}} = \dfrac{\partial}{\partial z^{[16]}_{(2,1)}}\dfrac{e^{z^{[16]}_{(2,1)}}}{\sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}}}$$&lt;/div&gt;
+&lt;p&gt;To calculate this partial derivative, we use the quotient rule for derivatives and get:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(2,1)}} = 
+\dfrac{0 * \sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}} - e^{z^{[16]}_{(1,1)}}e^{z^{[16]}_{(2,1)}}}{\big( \sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}} \big) ^ 2}$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(2,1)}} = 
+\dfrac{- e^{z^{[16]}_{(1,1)}}e^{z^{[16]}_{(2,1)}}}{\big( \sum_{j = 1}^{1000}e^{z^{[16]}_{(j,1)}} \big) ^ 2}$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(1,1)}}{\partial z^{[16]}_{(2,1)}} = 
+- a^{[16]}_{(1,1)}a^{[16]}_{(2,1)}$$&lt;/div&gt;
+&lt;p&gt;Generalizing this, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial a^{[16]}_{(i,1)}}{\partial z^{[16]}_{(j,1)}} = 
+\begin{cases}
+   a^{[16]}_{(i,1)}(1 - a^{[16]}_{(i,1)})  &amp;amp; i = j \\\\
+   - a^{[16]}_{(i,1)}a^{[16]}_{(j,1)} &amp;amp; i \neq j
+\end{cases}
+$$&lt;/div&gt;
+&lt;p&gt;And the Jacobian looks like this:&lt;/p&gt;
+&lt;div class="math"&gt;$$ \dfrac{\partial \textbf{a}^{[16]}}{\partial \textbf{z}^{[16]}} = 
+\begin{bmatrix}
+\\
+a^{[16]}_{(1,1)}(1 - a^{[16]}_{(1,1)}) &amp;amp;
+- a^{[16]}_{(1,1)}a^{[16]}_{(2,1)} &amp;amp; 
+\dotsc &amp;amp;
+- a^{[16]}_{(1,1)}a^{[16]}_{(999,1)} &amp;amp;
+- a^{[16]}_{(1,1)}a^{[16]}_{(1000,1)} \\\\
+\vdots &amp;amp; 
+\vdots &amp;amp;
+\ddots &amp;amp;
+\vdots &amp;amp;
+\vdots \\\\
+- a^{[16]}_{(1000,1)}a^{[16]}_{(1,1)} &amp;amp; 
+- a^{[16]}_{(1000,1)}a^{[16]}_{(2,1)} &amp;amp; 
+\dotsc &amp;amp;
+- a^{[16]}_{(1000,1)}a^{[16]}_{(999,1)} &amp;amp;
+a^{[16]}_{(1000,1)}(1 - a^{[16]}_{(1000,1)}) \\\\
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;The Jacobian has dimensions &lt;span class="math"&gt;\((1000, 1000)\)&lt;/span&gt;. Notice that the diagonal elements are equal to &lt;span class="math"&gt;\(a^{[16]}_{(i,1)}(1 - a^{[16]}_{(i,1)})\)&lt;/span&gt;, whereas every other element is equal to &lt;span class="math"&gt;\(- a^{[16]}_{(i,1)}a^{[16]}_{(j,1)}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;Substituting in our two Jacobian matricies, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial \textbf{z}^{[16]}} = \dfrac{\partial \mathcal{L}}{\partial \textbf{a}^{[16]}}\dfrac{\partial \textbf{a}^{[16]}}{\partial \textbf{z}^{[16]}}$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial \textbf{z}^{[16]}} = 
+\begin{bmatrix}
+-\dfrac{y_1}{a^{[16]}_{(1,1)}} &amp;amp;
+-\dfrac{y_2}{a^{[16]}_{(2,1)}} &amp;amp;
+\dots &amp;amp;
+-\dfrac{y_{1000}}{a^{[16]}_{(1000,1)}}
+\end{bmatrix}
+\begin{bmatrix}
+\\
+a^{[16]}_{(1,1)}(1 - a^{[16]}_{(1,1)}) &amp;amp;
+- a^{[16]}_{(1,1)}a^{[16]}_{(2,1)} &amp;amp; 
+\dotsc &amp;amp;
+- a^{[16]}_{(1,1)}a^{[16]}_{(999,1)} &amp;amp;
+- a^{[16]}_{(1,1)}a^{[16]}_{(1000,1)} \\\\
+\vdots &amp;amp; 
+\vdots &amp;amp;
+\ddots &amp;amp;
+\vdots &amp;amp;
+\vdots \\\\
+- a^{[16]}_{(1000,1)}a^{[16]}_{(1,1)} &amp;amp; 
+- a^{[16]}_{(1000,1)}a^{[16]}_{(2,1)} &amp;amp; 
+\dotsc &amp;amp;
+- a^{[16]}_{(1000,1)}a^{[16]}_{(999,1)} &amp;amp; 
+a^{[16]}_{(1000,1)}(1 - a^{[16]}_{(1000,1)}) \\\\
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;This matrix multiplication yields a Jacobian matrix with dimensions &lt;span class="math"&gt;\((1, 1000)\)&lt;/span&gt;. Let's look at the calculations for the first element of this matrix, the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(z^{[16]}_{(1,1)}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial z^{[16]}_{(1,1)}} = 
+-\dfrac{y_1}{a^{[16]}_{(1,1)}}a^{[16]}_{(1,1)}(1 - a^{[16]}_{(1,1)}) + 
+\dfrac{y_2}{a^{[16]}_{(2,1)}}a^{[16]}_{(2,1)}a^{[16]}_{(1,1)} +
+\dfrac{y_3}{a^{[16]}_{(3,1)}}a^{[16]}_{(3,1)}a^{[16]}_{(1,1)} +  
+\dots + 
+\dfrac{y_{1000}}{a^{[16]}_{(1000,1)}}a^{[16]}_{(1000,1)}a^{[16]}_{(1,1)}
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial z^{[16]}_{(1,1)}} = 
+-y_1(1 - a^{[16]}_{(1,1)}) + 
+y_2a^{[16]}_{(1,1)} +
+y_3a^{[16]}_{(1,1)} +  
+\dots + 
+y_{1000}a^{[16]}_{(1,1)}
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial z^{[16]}_{(1,1)}} = 
+-y_1 + 
+y_1a^{[16]}_{(1,1)}) + 
+y_2a^{[16]}_{(1,1)} +
+y_3a^{[16]}_{(1,1)} +  
+\dots + 
+y_{1000}a^{[16]}_{(1,1)}
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial z^{[16]}_{(1,1)}} = 
+-y_1 + 
+a^{[16]}_{(1,1)}\sum_i^{1000}{y_i}
+$$&lt;/div&gt;
+&lt;p&gt;And recall because &lt;span class="math"&gt;\(\textbf{y}\)&lt;/span&gt; has only one class, one element is equal to &lt;span class="math"&gt;\(1\)&lt;/span&gt; whereas the others are equal to &lt;span class="math"&gt;\(0\)&lt;/span&gt;. Therefore, the sum is equal to &lt;span class="math"&gt;\(1\)&lt;/span&gt;.&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial z^{[16]}_{(1,1)}} = 
+-y_1 +
+a^{[16]}_{(1,1)}*1
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial \mathcal{L}}{\partial z^{[16]}_{(1,1)}} = 
+a^{[16]}_{(1,1)} - y_1
+$$&lt;/div&gt;
+&lt;p&gt;Notice that the partial derivative is the same with just one class that we calculated in the previous &lt;a href="/backprop"&gt;backprop&lt;/a&gt; blog post! All that fun work to get the same answer. &lt;a href="https://www.ics.uci.edu/~pjsadows/notes.pdf"&gt;This is a great reference&lt;/a&gt; if you want more softmax backprop fun.&lt;/p&gt;
+&lt;p&gt;Generalizing to all elements in the Jacobian matrix, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{z}^{[16]}} = 
+\begin{bmatrix}
+a^{[16]}_{(1,1)} - y_1 &amp;amp;
+a^{[16]}_{(2,1)} - y_2 &amp;amp;
+a^{[16]}_{(3,1)} - y_3 &amp;amp;
+\dots &amp;amp;
+a^{[16]}_{(1000,1)} - y_{1000} &amp;amp;
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;And we end up with the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt; with dimensions &lt;span class="math"&gt;\((1000, 1)\)&lt;/span&gt;. We sometimes label the transpose of this partial derivative &lt;span class="math"&gt;\(\boldsymbol{\delta}^{[16]}\)&lt;/span&gt;.&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\boldsymbol{\delta}^{[2]} = 
+\bigg( \dfrac{\mathcal{L}}{\partial{\mathbf{z}^{[16]}}}\bigg)^T
+$$&lt;/div&gt;
+&lt;p&gt;The dimensions of &lt;span class="math"&gt;\(\boldsymbol{\delta}^{[16]}\)&lt;/span&gt; are &lt;span class="math"&gt;\((1000, 1)\)&lt;/span&gt;, which match the dimensions of &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt;. So we can think of &lt;span class="math"&gt;\(\boldsymbol{\delta}^{[16]}\)&lt;/span&gt; as the gradient for &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt;, although we don't use this explicitly in gradient descent since &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt; has no updatable parameters.&lt;/p&gt;
+&lt;p&gt;Next up, we need to calculate the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to both &lt;span class="math"&gt;\(\textbf{W}^{[16]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{b}^{[16]}\)&lt;/span&gt; in order to get the gradients &lt;span class="math"&gt;\(d\textbf{W}^{[16]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(d\textbf{b}^{[16]}\)&lt;/span&gt; with gradient descent. Luckily, we've already calculated this in the previous post on &lt;a href="\backprop"&gt;backprop&lt;/a&gt; so we can just use the results from that:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \textbf{z}^{[16]}}{\partial \textbf{W}^{[16]}} =
+\begin{bmatrix}
+a^{[15]}_{(1,1)} &amp;amp;
+a^{[15]}_{(2,1)} &amp;amp;
+a^{[15]}_{(3,1)} &amp;amp;
+\dots &amp;amp;
+a^{[15]}_{(999,1)} &amp;amp;
+a^{[15]}_{(1000,1)} &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 \\\\
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+a^{[15]}_{(1,1)} &amp;amp;
+a^{[15]}_{(2,1)} &amp;amp;
+a^{[15]}_{(3,1)} &amp;amp;
+\dots &amp;amp;
+a^{[15]}_{(999,1)} &amp;amp;
+a^{[15]}_{(1000,1)} &amp;amp;
+\dots &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp; \\\\
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\dots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\dots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\dots &amp;amp;
+\dots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\dots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp; \\\\
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+\dots &amp;amp;
+a^{[15]}_{(1,1)} &amp;amp;
+a^{[15]}_{(2,1)} &amp;amp;
+a^{[15]}_{(3,1)} &amp;amp;
+\dots &amp;amp;
+a^{[15]}_{(999,1)} &amp;amp;
+a^{[15]}_{(1000,1)} \\\\
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Notice that the Jacobian Matrix for the partial derivative of &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{W}^{[16]}\)&lt;/span&gt; is a matrix with dimensions &lt;span class="math"&gt;\((1000, 1000000)\)&lt;/span&gt;. Since &lt;span class="math"&gt;\(\textbf{W}^{[16]}\)&lt;/span&gt; has dimensions &lt;span class="math"&gt;\((1000, 1000)\)&lt;/span&gt;, it has a total of &lt;span class="math"&gt;\(1000 * 1000 = 1,000,000\)&lt;/span&gt; weights which is represented in the second dimension of the Jacobian Matrix. &lt;/p&gt;
+&lt;p&gt;Using the chain rule, the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{W}^{[16]}\)&lt;/span&gt; is equal to:
+&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{W}^{[16]}} = \dfrac{\partial \mathcal{L}}{\partial \textbf{z}^{[16]}}\dfrac{\partial \mathcal{\textbf{z}^{[16]}}}{\partial \textbf{W}^{[16]}}
+\dfrac{\partial \mathcal{L}}{\partial \textbf{W}^{[16]}} = \boldsymbol{\delta}^{[16]T}\dfrac{\partial \mathcal{\textbf{z}^{[16]}}}{\partial \textbf{W}^{[16]}}
+$$&lt;/div&gt;
+&lt;p&gt;Plugging in our two results, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{W}^{[16]}} = 
+\begin{bmatrix}
+\delta^{[16]}_{(1,1)} &amp;amp;
+\delta^{[16]}_{(2,1)} &amp;amp;
+\delta^{[16]}_{(3,1)} &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1000,1)}
+\end{bmatrix}
+\begin{bmatrix}
+a^{[15]}_{(1,1)} &amp;amp;
+a^{[15]}_{(2,1)} &amp;amp;
+a^{[15]}_{(3,1)} &amp;amp;
+\dots &amp;amp;
+a^{[15]}_{(999,1)} &amp;amp;
+a^{[15]}_{(1000,1)} &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 \\\\
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+a^{[15]}_{(1,1)} &amp;amp;
+a^{[15]}_{(2,1)} &amp;amp;
+a^{[15]}_{(3,1)} &amp;amp;
+\dots &amp;amp;
+a^{[15]}_{(999,1)} &amp;amp;
+a^{[15]}_{(1000,1)} &amp;amp;
+\dots &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp; \\\\
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\dots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\dots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\dots &amp;amp;
+\dots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\dots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp; \\\\
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+\dots &amp;amp;
+a^{[15]}_{(1,1)} &amp;amp;
+a^{[15]}_{(2,1)} &amp;amp;
+a^{[15]}_{(3,1)} &amp;amp;
+\dots &amp;amp;
+a^{[15]}_{(999,1)} &amp;amp;
+a^{[15]}_{(1000,1)} \\\\
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{W}^{[16]}} = 
+\begin{bmatrix}
+\delta^{[16]}_{(1,1)}a^{[15]}_{(1,1)} &amp;amp;
+\delta^{[16]}_{(2,1)}a^{[15]}_{(1,1)} &amp;amp;
+\delta^{[16]}_{(3,1)}a^{[15]}_{(1,1)} &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1000,1)}a^{[15]}_{(1,1)} &amp;amp;
+\delta^{[16]}_{(1,1)}a^{[15]}_{(2,1)} &amp;amp;
+\delta^{[16]}_{(2,1)}a^{[15]}_{(2,1)} &amp;amp;
+\delta^{[16]}_{(3,1)}a^{[15]}_{(2,1)} &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1000,1)}a^{[15]}_{(2,1)} &amp;amp;
+\dots &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1,1)}a^{[15]}_{(1000,1)} &amp;amp;
+\delta^{[16]}_{(2,1)}a^{[15]}_{(1000,1)} &amp;amp;
+\delta^{[16]}_{(3,1)}a^{[15]}_{(1000,1)} &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1000,1)}a^{[15]}_{(1000,1)} &amp;amp;
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;So this is our Jacobian, with dimensions &lt;span class="math"&gt;\((1,1000000)\)&lt;/span&gt;. But we need our gradient matrix &lt;span class="math"&gt;\(d\textbf{W}^{[16]}\)&lt;/span&gt; to have dimensions that match &lt;span class="math"&gt;\(\textbf{W}^{[16]}\)&lt;/span&gt;. So we will reshape the Jacobian into a &lt;span class="math"&gt;\((1000, 1000)\)&lt;/span&gt; matrix.&lt;/p&gt;
+&lt;div class="math"&gt;$$
+d\textbf{W}^{[16]} = 
+\begin{bmatrix}
+\delta^{[16]}_{(1,1)}a^{[15]}_{(1,1)} &amp;amp;
+\delta^{[16]}_{(2,1)}a^{[15]}_{(1,1)} &amp;amp;
+\delta^{[16]}_{(3,1)}a^{[15]}_{(1,1)} &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1000,1)}a^{[15]}_{(1,1)} \\\\
+\delta^{[16]}_{(1,1)}a^{[15]}_{(2,1)} &amp;amp;
+\delta^{[16]}_{(2,1)}a^{[15]}_{(2,1)} &amp;amp;
+\delta^{[16]}_{(3,1)}a^{[15]}_{(2,1)} &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1000,1)}a^{[15]}_{(2,1)} \\\\
+\vdots &amp;amp;
+\vdots &amp;amp;
+\vdots &amp;amp;
+\dots &amp;amp;
+\vdots \\\\
+\delta^{[16]}_{(1,1)}a^{[15]}_{(1000,1)} &amp;amp;
+\delta^{[16]}_{(2,1)}a^{[15]}_{(1000,1)} &amp;amp;
+\delta^{[16]}_{(3,1)}a^{[15]}_{(1000,1)} &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1000,1)}a^{[15]}_{(1000,1)} \\\\
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+d\textbf{W}^{[16]} = 
+\begin{bmatrix}
+\delta^{[16]}_{(2,1)} \\\\
+\delta^{[16]}_{(2,1)} \\\\
+\vdots \\\\
+\delta^{[16]}_{(1000,1)}
+\end{bmatrix}
+\begin{bmatrix}
+a^{[15]}_{(1,1)} &amp;amp;
+a^{[15]}_{(2,1)} &amp;amp;
+\vdots &amp;amp;
+a^{[15]}_{(1000,1)}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+d\textbf{W}^{[16]} = 
+\boldsymbol{\delta}^{[16]}\textbf{a}^{[15]T}
+$$&lt;/div&gt;
+&lt;p&gt;Ok great, now that we have &lt;span class="math"&gt;\(d\textbf{W}^{[16]}\)&lt;/span&gt; taken care of, let's move on to looking at the partial derivative of &lt;span class="math"&gt;\(\textbf{z}^{[16]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{b}^{[16]}\)&lt;/span&gt;. Again, we will use calculations we did in a simpler example in the &lt;a href="\backprop"&gt;backprop&lt;/a&gt; post.&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \textbf{z}^{[16]}}{\partial \textbf{b}^{[16]}} =
+\begin{bmatrix}
+1 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 \\\\
+0 &amp;amp;
+1 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 \\\\
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+1 &amp;amp;
+0 \\\\
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+1 \\\\
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Using the chain rule, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{b}^{[16]}} = \dfrac{\partial \mathcal{L}}{\partial \textbf{z}^{[16]}}\dfrac{\partial \mathcal{\textbf{z}^{[16]}}}{\partial \textbf{b}^{[16]}}
+\dfrac{\partial \mathcal{L}}{\partial \textbf{b}^{[16]}} = \boldsymbol{\delta}^{[16]T}\dfrac{\partial \mathcal{\textbf{z}^{[16]}}}{\partial \textbf{b}^{[16]}}
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{b}^{[16]}} = 
+\begin{bmatrix}
+\delta^{[16]}_{(1,1)} &amp;amp;
+\delta^{[16]}_{(2,1)} &amp;amp;
+\delta^{[16]}_{(3,1)} &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1000,1)}
+\end{bmatrix}
+\begin{bmatrix}
+1 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 \\\\
+0 &amp;amp;
+1 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+0 \\\\
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+1 &amp;amp;
+0 \\\\
+0 &amp;amp;
+0 &amp;amp;
+\dots &amp;amp;
+0 &amp;amp;
+1 \\\\
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{b}^{[16]}} = 
+\begin{bmatrix}
+\delta^{[16]}_{(1,1)} &amp;amp;
+\delta^{[16]}_{(2,1)} &amp;amp;
+\delta^{[16]}_{(3,1)} &amp;amp;
+\dots &amp;amp;
+\delta^{[16]}_{(1000,1)}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{b}^{[16]}} = \boldsymbol{\delta}^{[16]T}
+$$&lt;/div&gt;
+&lt;p&gt;So the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{b}^{[16]}\)&lt;/span&gt; is just the transpose of &lt;span class="math"&gt;\(\boldsymbol{\delta}^{[16]}\)&lt;/span&gt;, meaning that the gradient &lt;span class="math"&gt;\(d\textbf{b}^{[16]}\)&lt;/span&gt; will just be equal to:&lt;/p&gt;
+&lt;div class="math"&gt;$$d\textbf{b}^{[16]} = \boldsymbol{\delta}^{[16]T}$$&lt;/div&gt;
+&lt;p&gt;Great, so in this section we've talked about how to calculate the gradients &lt;span class="math"&gt;\(\boldsymbol{\delta}^{[16]}\)&lt;/span&gt;, &lt;span class="math"&gt;\(d\textbf{W}^{[16]}\)&lt;/span&gt;, and &lt;span class="math"&gt;\(d\textbf{b}^{[16]}\)&lt;/span&gt; and therefore know how to calculate the gradients for the softmax layer for hopefully any architecture we will encounter in the future.&lt;/p&gt;
+&lt;p&gt;After this softmax layer, we have two more fully-connected layers. The only difference between these two fully connected layers and the softmax layer we calculated above is that they use a ReLU as opposed to softmax activation function. I show how to calculate the gradients for these layers in my &lt;a href="/backprop"&gt;backprop post&lt;/a&gt; that I'm sure you are sick of hearing about.&lt;/p&gt;
+&lt;p&gt;Working backwards, after the two fully connected layers we reshape our output from a column vector &lt;span class="math"&gt;\(f^{[13]}\)&lt;/span&gt; which has dimensions &lt;span class="math"&gt;\((25088, 1)\)&lt;/span&gt; to a 3D tensor &lt;span class="math"&gt;\(m^{[13]}\)&lt;/span&gt; of shape &lt;span class="math"&gt;\((7, 7, 512)\)&lt;/span&gt;. What is the partial derivative for this transition? Since we don't change the dimensions and only reshape the elements, the partial derivative of &lt;span class="math"&gt;\(\textbf{f}^{[13]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{m}^{[13]}\)&lt;/span&gt; is just the identity matrix with dimensions &lt;span class="math"&gt;\((25088, 25088)\)&lt;/span&gt;. So this partial derivative doesn't change the calculations for the calculating the partial derivatives for the preceding layer.&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h2&gt;Backprop for the Max Pooling Layer&lt;/h2&gt;
+&lt;p&gt;There are a total of &lt;span class="math"&gt;\(5\)&lt;/span&gt; max pooling layers in the VGG-16 architecture. Since they don't use trainable parameters, we only need to calculate their gradient &lt;span class="math"&gt;\(\boldsymbol{\delta}^{[13]}\)&lt;/span&gt;, which is the input into the max pooling layer and we can use to calculate the gradients for the trainable parameters of that conv layer, &lt;span class="math"&gt;\(\textbf{W}_c^{[13]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{b}_c^{[13]}\)&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;In order to calculate its gradient, we need to find the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt;. Using the chain rule, we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{a}^{[13]}} = \dfrac{\partial \mathcal{L}}{\partial \textbf{m}^{[13]}}\dfrac{\partial \textbf{m}^{[13]}}{\partial \textbf{a}^{[13]}}
+$$&lt;/div&gt;
+&lt;p&gt;Let's focus on the partial of &lt;span class="math"&gt;\(\textbf{m}^{[13]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt;. &lt;span class="math"&gt;\(\textbf{m}^{[13]}\)&lt;/span&gt; has &lt;span class="math"&gt;\(7 * 7 * 512 = 25088\)&lt;/span&gt; values, and will therefore be the first dimension of the Jacobian. &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt; has &lt;span class="math"&gt;\(14 * 14 * 512 = 100352\)&lt;/span&gt;, and is the second dimension of the Jacobian. Good lord, this Jacobian has dimensions &lt;span class="math"&gt;\((25088, 100352)\)&lt;/span&gt; and has a total of &lt;span class="math"&gt;\(25088 * 100352 = 2517630976\)&lt;/span&gt; values. As you'll soon see, this Jacobian matrix is very sparse. There are computational shortcuts that libraries like tensorflow and pytorch use to handle these crazy matricies. So no worries.&lt;/p&gt;
+&lt;p&gt;Let's spend some time understanding how the elements of this matrix are aligned. We can start by looking at the first row of this matrix:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\begin{bmatrix}
+\dfrac{\partial m^{[13]}_{(1,1,1)}}{\partial a^{[13]}_{(1, 1, 1)}}, &amp;amp; 
+\dots, &amp;amp; 
+\dfrac{\partial m^{[13]}_{(1,1,1)}}{\partial a^{[13]}_{(14, 14, 512)}}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;So notice that the value in the numerator stays the same and the value of the denominator starts with &lt;span class="math"&gt;\(a^{[13]}_{(1, 1, 1)}\)&lt;/span&gt; and finishes at &lt;span class="math"&gt;\(a^{[13]}_{(14, 14, 512)}\)&lt;/span&gt;. Since they are the ones chaning, let's focus on the values in the denominator:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\begin{bmatrix}
+a^{[13]}_{(1, 1, 1)} &amp;amp; 
+\dots &amp;amp;
+a^{[13]}_{(14, 14, 512)}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;So basically what we are doing is taking the 3D tensor array &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt; and flattening it into a 1D vector. In math, this operation is sometimes called &lt;span class="math"&gt;\(\textrm{vec}(\textbf{a})\)&lt;/span&gt;. If we expanded this a little out:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\begin{bmatrix}
+a^{[13]}_{(1, 1, 1)} &amp;amp;
+\dots &amp;amp;
+a^{[13]}_{(14, 1, 1)} &amp;amp;
+a^{[13]}_{(1, 2, 1)} &amp;amp;
+\dots &amp;amp;
+a^{[13]}_{(14, 14, 1)} &amp;amp;
+a^{[13]}_{(1, 1, 2)} &amp;amp;
+\dots &amp;amp;
+a^{[13]}_{(14, 14, 512)}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;So we think of the first dimension as the width, the second as the height, and the third as the channel. So the first &lt;span class="math"&gt;\(14\)&lt;/span&gt; values of the vector are all the values for width for a height of &lt;span class="math"&gt;\(1\)&lt;/span&gt; and channel of &lt;span class="math"&gt;\(1\)&lt;/span&gt;. Then we move to the next height &lt;span class="math"&gt;\(2\)&lt;/span&gt;, keep the channel &lt;span class="math"&gt;\(1\)&lt;/span&gt; the same, and go through all &lt;span class="math"&gt;\(14\)&lt;/span&gt; values of the width. We continue this until we finish all &lt;span class="math"&gt;\(14\)&lt;/span&gt; heights, and we have the first &lt;span class="math"&gt;\(14 * 14 = 196\)&lt;/span&gt; values. Next, we reset the height to &lt;span class="math"&gt;\(1\)&lt;/span&gt; and width to &lt;span class="math"&gt;\(1\)&lt;/span&gt; and repeat the process for channel &lt;span class="math"&gt;\(2\)&lt;/span&gt;. We go through all &lt;span class="math"&gt;\(512\)&lt;/span&gt; channels in this way, until we have a total of &lt;span class="math"&gt;\(14 * 14 * 512 = 100352\)&lt;/span&gt; values.&lt;/p&gt;
+&lt;p&gt;So that was the first row of our Jacobian matrix. We can think of the first column of our Jacobian matrix in a similar way:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\begin{bmatrix}
+\dfrac{\partial m^{[13]}_{(1,1,1)}}{\partial a^{[13]}_{(1, 1, 1)}}, \\\\ 
+\dots \\\\
+\dfrac{\partial m^{[13]}_{(7,7,512)}}{\partial a^{[13]}_{(1, 1, 1)}}
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;In this case, the value in the numerator is the one changing, from &lt;span class="math"&gt;\(m^{[13]}_{(1,1,1)}\)&lt;/span&gt; to &lt;span class="math"&gt;\(m^{[13]}_{(7,7,512)}\)&lt;/span&gt;. We can think of this as being similar to above, where we convert &lt;span class="math"&gt;\(\textbf{m}^{[13]}\)&lt;/span&gt; into a flat vector, using the &lt;span class="math"&gt;\(vec\)&lt;/span&gt; operation.&lt;/p&gt;
+&lt;p&gt;Now that we have a better intutition about the values in the Jacobian Matrix, let's take the first value in this Jacobian Matrix and see if we can figure it out. Recall that the max pooling operation was defined as being:&lt;/p&gt;
+&lt;div class="math"&gt;$$m^{[13]}_{(i,j,k)} = \max_{i * s &amp;lt;= l &amp;lt; i * s + f, j * s &amp;lt;= l &amp;lt; j * s + f }a^{[2]}_{(l,m,k)}$$&lt;/div&gt;
+&lt;p&gt;Since all of our max pooling layers in VGG16 use a stride size of &lt;span class="math"&gt;\(2\)&lt;/span&gt; (&lt;span class="math"&gt;\(s = 2\)&lt;/span&gt;) and a &lt;span class="math"&gt;\(2x2\)&lt;/span&gt; filter (&lt;span class="math"&gt;\(f = 2\)&lt;/span&gt;), we get:&lt;/p&gt;
+&lt;div class="math"&gt;$$m^{[13]}_{(i,j,k)} = \max_{i * 2 &amp;lt;= l &amp;lt; i * 2 + 2, j * 2 &amp;lt;= l &amp;lt; j * 2 + 2 }a^{[2]}_{(l,m,k)}$$&lt;/div&gt;
+&lt;p&gt;Let's say we are interested in calculating &lt;span class="math"&gt;\(m^{[13]}_{(1,1,1)}\)&lt;/span&gt;. We would look for the max value within a &lt;span class="math"&gt;\(2\)&lt;/span&gt; by &lt;span class="math"&gt;\(2\)&lt;/span&gt; window within &lt;span class="math"&gt;\(\textbf{a}^{[2]}\)&lt;/span&gt;. Based on the equation above, the values we will look at are:&lt;/p&gt;
+&lt;div class="math"&gt;$$(a^{[13]}_{(1, 1, 1)}, a^{[13]}_{(2, 1, 1)}, a^{[13]}_{(1, 2, 1)}, a^{[13]}_{(2, 2, 1)})$$&lt;/div&gt;
+&lt;p&gt;Let's say the actual numerical values are as follows:&lt;/p&gt;
+&lt;div class="math"&gt;$$0, 5, 1, -4$$&lt;/div&gt;
+&lt;p&gt;Since &lt;span class="math"&gt;\(5\)&lt;/span&gt; is the largest, &lt;span class="math"&gt;\(m^{[13]}_{(1,1,1)} = a^{[13]}_{(2, 1, 1)}\)&lt;/span&gt;, and the partial derivative of &lt;span class="math"&gt;\(m^{[13]}_{(1,1,1)}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(a^{[13]}_{(2, 1, 1)}\)&lt;/span&gt; is equal to:&lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial m^{[13]}_{(1,1,1)}}{\partial a^{[13]}_{(1, 1, 1)}} = 1$$&lt;/div&gt;
+&lt;p&gt;Note that the partial derivatives of &lt;span class="math"&gt;\(m^{[13]}_{(1,1,1)}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(a^{[13]}_{(1, 1, 1)}\)&lt;/span&gt;, &lt;span class="math"&gt;\(a^{[13]}_{(1, 2, 1)}\)&lt;/span&gt;, and &lt;span class="math"&gt;\(a^{[13]}_{(2, 2, 1)}\)&lt;/span&gt; are equal to &lt;span class="math"&gt;\(0\)&lt;/span&gt;. And actually, the partial derivative of &lt;span class="math"&gt;\(m^{[13]}_{(1,1,1)}\)&lt;/span&gt; with respect to all the other values in the conv layer &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt; are also equal to 0 since they aren't in the 2 by 2 max pooling window we used. So the first row of our Jacobian matrix looks like this:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\begin{bmatrix}
+\dfrac{\partial m^{[13]}_{(1,1,1)}}{\partial a^{[13]}_{(1, 1, 1)}}, &amp;amp;
+\dfrac{\partial m^{[13]}_{(1,1,1)}}{\partial a^{[13]}_{(2, 1, 1)}}, &amp;amp; 
+\dots, &amp;amp; 
+\dfrac{\partial m^{[13]}_{(1,1,1)}}{\partial a^{[13]}_{(14, 14, 512)}}
+\end{bmatrix}
+=
+\begin{bmatrix}
+0 &amp;amp;
+1 &amp;amp;
+\dots &amp;amp; 
+0
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;And we can continue this process for &lt;span class="math"&gt;\(m^{[13]}_{(2,1,1)}\)&lt;/span&gt; through &lt;span class="math"&gt;\(m^{[13]}_{(7,7,512)}\)&lt;/span&gt; and eventually fill up our &lt;span class="math"&gt;\(25088\)&lt;/span&gt; rows of our Jacobian matrix. And that's all to it! Notice that this matrix is very sparse. Each row has exactly one nonzero value and each column has at most one nonzero value. So we don't have to hold this whole matrix in memory. Instead, we can just record the locations of the nonzero values.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Notice that this means that we will only update the weights with errors that correspond with the max values in each window.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;We just figured out the partial derivative of &lt;span class="math"&gt;\(\textbf{m}^{[13]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt;. Since we already calculated the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{m}^{[13]}\)&lt;/span&gt;, using the chain rule we can use that to calculate the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt; and send that result to the preceding layer and for the first time calculate the partial derivatives of the convolutional weights and biases. We'll work on that next.&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h2&gt;Backprop for the Conv Layer&lt;/h2&gt;
+&lt;p&gt;The final type of layer that we need to calculate the partial derivatives for in order to get the gradients of the trainable parameters are conv layers. Let's focus on the first conv layer that we reach in VGG16, &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt;. Our objective is to calculate the gradients for the trainable parameters in this layer, &lt;span class="math"&gt;\(d\textbf{W}^{[13]}_c\)&lt;/span&gt; and &lt;span class="math"&gt;\(d\textbf{b}^{[13]}_c\)&lt;/span&gt;, as well as the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt;, which we use to calculate the gradients for the preceding layers. Let's focus on this first. We can use the chain rule to break apart this partial derivative:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{z}^{[13]}} = \dfrac{\partial \mathcal{L}}{\partial \textbf{a}^{[13]}}\dfrac{\partial \mathcal{\textbf{a}^{[13]}}}{\partial \textbf{z}^{[13]}}
+$$&lt;/div&gt;
+&lt;p&gt;We've already calculated the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt;, so we focus our attention on calculating the partial derivative of &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt;. &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt; have the same dimensions &lt;span class="math"&gt;\((14, 14, 512)\)&lt;/span&gt;. So therefore, the Jacobian matrix is &lt;span class="math"&gt;\(100352\)&lt;/span&gt; by &lt;span class="math"&gt;\(100352\)&lt;/span&gt;. The position of the values from &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt; is very similar to our previous max pooling example, where we can think of the changing values in each row as &lt;span class="math"&gt;\(vec(\textbf{z}^{[13]})\)&lt;/span&gt; and the changing values in each column as &lt;span class="math"&gt;\(vec(\textbf{a}^{[13]})\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;The transition from &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt; to &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt; just consists of applying the ReLU &lt;span class="math"&gt;\(g(z)\)&lt;/span&gt; nonlinear activation function to each element. What is the ReLU function?&lt;/p&gt;
+&lt;div class="math"&gt;$$
+g(z) = \begin{cases}
+   z &amp;amp;\text{if } z &amp;gt; 0  \\
+   0 &amp;amp;\text{if } z =&amp;lt; 0
+\end{cases}
+$$&lt;/div&gt;
+&lt;p&gt;So the ReLU function just returns the value if it's greater than &lt;span class="math"&gt;\(0\)&lt;/span&gt;, and 0 otherwise. What is the derivative of the ReLU function?&lt;/p&gt;
+&lt;div class="math"&gt;$$
+g'(z) = \begin{cases}
+   1 &amp;amp;\text{if } z &amp;gt; 0  \\
+   \text{Undefined} &amp;amp;\text{if } z = 0  \\
+   0 &amp;amp;\text{if } z &amp;lt; 0
+\end{cases}
+$$&lt;/div&gt;
+&lt;p&gt;Since this function is applied elementwise, the partial derivative of &lt;span class="math"&gt;\(\textbf{a}^{[13]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt; is just a diagonal matrix, with the derivatives of ReLU that correspond with that element in the diagonals and &lt;span class="math"&gt;\(0\)&lt;/span&gt; for all the other values.&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \textbf{a}^{[13]}}{\partial \textbf{z}^{[13]}} = 
+\begin{bmatrix}
+g'(z^{[13]}_{(1,1,1)}) &amp;amp; 0 &amp;amp; \dots &amp;amp; 0 &amp;amp; 0 \\\\
+0 &amp;amp; g'(z^{[13]}_{(2,1,1)}) &amp;amp; \dots &amp;amp; 0 &amp;amp; 0 \\\\
+\vdots &amp;amp; \vdots &amp;amp; \ddots &amp;amp; \vdots &amp;amp; \vdots \\\\
+0 &amp;amp; 0 &amp;amp; \dots &amp;amp; g'(z^{[13]}_{(13,14,512)}) &amp;amp; 0 \\\\
+0 &amp;amp; 0 &amp;amp; \dots &amp;amp; 0 &amp;amp; g'(z^{[13]}_{(14,14,512)}) \\\\
+\end{bmatrix}
+$$&lt;/div&gt;
+&lt;p&gt;Great, so next we focus our attention on calculating the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{W}_c^{[13]}\)&lt;/span&gt;. Using the chain rule:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dfrac{\partial \mathcal{L}}{\partial \textbf{W}_c^{[13]}} = 
+\dfrac{\partial \mathcal{L}}{\partial \textbf{z}^{[13]}} 
+\dfrac{\partial \mathcal{\textbf{z}^{[13]}}}{\partial \textbf{W}^{[13]}}
+$$&lt;/div&gt;
+&lt;p&gt;We just calculated the partial derivative of &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt; and focus on calculating the partial derivative of &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(\textbf{W}_c^{[13]}\)&lt;/span&gt;. This derivative takes it's first dimension from the values in &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt; &lt;span class="math"&gt;\(7 * 7 * 512 = 25088\)&lt;/span&gt; and second dimension from values in &lt;span class="math"&gt;\(\textbf{W}_c^{[13]}\)&lt;/span&gt; &lt;span class="math"&gt;\(3 * 3 * 512 * 512 = 2359296\)&lt;/span&gt;. Its dimensions are therefore &lt;span class="math"&gt;\((25088 , 2359296)\)&lt;/span&gt;. Again, we can think of getting the values for each indexed partial derivatives using the &lt;span class="math"&gt;\(vec()\)&lt;/span&gt; function.&lt;/p&gt;
+&lt;p&gt;Let's deconstruct the derivative for &lt;span class="math"&gt;\(z^{[13]}_{(1,1,1)}\)&lt;/span&gt;. Since this is from the first channel of &lt;span class="math"&gt;\(\textbf{z}^{[13]}\)&lt;/span&gt;, we use the first filter channel in &lt;span class="math"&gt;\(\textbf{W}_c^{[13]}\)&lt;/span&gt;. The calculation is as follows:&lt;/p&gt;
+&lt;div class="math"&gt;$$z^{[13]}_{(1,1,1)} =
+s^{[12]}_{(1, 1, 1)}W^{[13]}_{c(1,1,1,1)} + 
+s^{[12]}_{(2, 1, 1)}W^{[13]}_{c(2,1,1,1)} + 
+s^{[12]}_{(3, 1, 1)}W^{[13]}_{c(3,1,1,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+s^{[12]}_{(1, 2, 1)}W^{[13]}_{c(1,2,1,1)} + 
+s^{[12]}_{(2, 2, 1)}W^{[13]}_{c(2,2,1,1)} + 
+s^{[12]}_{(3, 2, 1)}W^{[13]}_{c(3,2,1,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+s^{[12]}_{(1, 3, 1)}W^{[13]}_{c(1,3,1,1)} + 
+s^{[12]}_{(2, 3, 1)}W^{[13]}_{c(2,3,1,1)} + 
+s^{[12]}_{(3, 3, 1)}W^{[13]}_{c(3,3,1,1)} + \dots
+$$&lt;/div&gt;
+&lt;p&gt;These are the calculations when we multiply the first channel of the first filter with the same padded input &lt;span class="math"&gt;\(\textbf{s^{[12]}}\)&lt;/span&gt;. Next, we just move to the next channel of the first filter, and the third dimension goes from &lt;span class="math"&gt;\(1 \rightarrow 2\)&lt;/span&gt;. We repeat this process for the 512 channels.&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\dots + 
+s^{[12]}_{(1, 1, 2)}W^{[13]}_{c(1,1,2,1)} + 
+s^{[12]}_{(2, 1, 2)}W^{[13]}_{c(2,1,2,1)} + 
+s^{[12]}_{(3, 1, 2)}W^{[13]}_{c(3,1,2,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+s^{[12]}_{(1, 2, 2)}W^{[13]}_{c(1,2,2,1)} + 
+s^{[12]}_{(2, 2, 2)}W^{[13]}_{c(2,2,2,1)} + 
+s^{[12]}_{(3, 2, 2)}W^{[13]}_{c(3,2,2,1)} +
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+s^{[12]}_{(1, 3, 2)}W^{[13]}_{c(1,3,2,1)} + 
+s^{[12]}_{(2, 3, 2)}W^{[13]}_{c(2,3,2,1)} + 
+s^{[12]}_{(3, 3, 2)}W^{[13]}_{c(3,3,2,1)} + \dots
+$$&lt;/div&gt;
+&lt;p&gt;And then eventually we reach the channel number &lt;span class="math"&gt;\(512\)&lt;/span&gt; in the first filter:&lt;/p&gt;
+&lt;div class="math"&gt;$$
+\vdots
+$$&lt;/div&gt;
+&lt;div class="math"&gt;$$ 
+s^{[12]}_{(1, 3, 512)}W^{[13]}_{c(1,3,512,1)} + 
+s^{[12]}_{(2, 3, 512)}W^{[13]}_{c(2,3,512,1)} + 
+s^{[12]}_{(3, 3, 512)}W^{[13]}_{c(3,3,512,1)} + b^{[1]}_{(1,1)}
+$$&lt;/div&gt;
+&lt;p&gt;Recall from the blog post on &lt;a href="/vgg_forwardprop"&gt;VGG16 forward propagation&lt;/a&gt; that &lt;span class="math"&gt;\(\textbf{s}^{[12]}\)&lt;/span&gt; is the activation from the previous layer padded with one border of zeros &lt;span class="math"&gt;\(p = 1\)&lt;/span&gt; using same padding.&lt;/p&gt;
+&lt;p&gt;What happens when we take the partial derivative of &lt;span class="math"&gt;\(z^{[13]}_{(1,1,1)}\)&lt;/span&gt; with respect to &lt;span class="math"&gt;\(W^{[13]}_{c(1,1,1,1)}\)&lt;/span&gt;? Notice we just get the value for the padding layer &lt;span class="math"&gt;\(s^{[13]}_{(1, 1, 1)}\)&lt;/span&gt; and everything else is equal to 0. &lt;/p&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial z^{[13]}_{(1,1,1)}}{\partial W^{[13]}_{c(1,1,1,1)}} = s^{[12]}_{(1, 1, 1)} + 0 + 0 + ... + 0$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\dfrac{\partial z^{[13]}_{(1,1,1)}}{\partial W^{[13]}_{c(1,1,1,1)}} = s^{[12]}_{(1, 1, 1)}$$&lt;/div&gt;
+&lt;p&gt;So notice that the first row of the Jacobian Matrix will have &lt;span class="math"&gt;\(3 * 3 * 512 = 4608\)&lt;/span&gt; nonzero elements, which correspond to the values multiplied by the weights in the filter. Notice that this is a very sparse row, since there are a total of &lt;span class="math"&gt;\(2359296\)&lt;/span&gt; elements in the row.&lt;/p&gt;
+&lt;h2&gt;Conclusion&lt;/h2&gt;
+&lt;p&gt;In this post, we breakdown the architecture of VGG-16 and used it to explain some of the fundamental building blocks of the convolutional network - pooling layers and conv layers. We discussed some of the benefits of convolutional networks over fully connected layers and talked briefly about how backpropagation works for VGG-16.&lt;/p&gt;
+&lt;p&gt;You might have felt a little disatisfied with the math behind backpropagation the way that I explained it. At the end of this post, I also feel disatisfied. There is a transformation called &lt;code&gt;im2col&lt;/code&gt; which flattens the input and filter bank as 2-dimensinoal matrices. Many explanations of backpropagation for convolutional networks use this function to simplify the computation (at the expense of memory) and I think it makes everything a lot simpler. In a future post, I will describe the &lt;code&gt;im2col&lt;/code&gt; operation within the context of backpropagation, but I think for now we ware good.&lt;/p&gt;
+&lt;p&gt;As always, thanks so much for reading though my post! Any commens and questions would be greatly appreciated.&lt;/p&gt;
+&lt;script type="text/javascript"&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width &lt; 768) ? "left" : align;
+        indent = (screen.width &lt; 768) ? "0em" : indent;
+        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'black ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+&lt;/script&gt;</content><category term="neural networks"></category><category term="machine learning"></category><category term="convolutional networks"></category><category term="VGG"></category></entry><entry><title>The Math behind Neural Networks - Backpropagation</title><link href="http://www.jasonosajima.com/backprop.html" rel="alternate"></link><published>2018-07-18T00:00:00-07:00</published><updated>2018-07-18T00:00:00-07:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2018-07-18:/backprop.html</id><summary type="html">
 
 &lt;p&gt;The hardest part about deep learning for me was backpropagation. Forward propagation made sense; basically you do a bunch of matrix multiplications, add some bias terms, and throw in non-linearities so it doesn't turn into one large matrix multiplication. Gradient descent also intuitively made sense to me as well; we want to use the partial derivatives of our parameters with respect to our cost function (&lt;span class="math"&gt;\(J\)&lt;/span&gt;) to update our parameters in order to minimize &lt;span class="math"&gt;\(J\)&lt;/span&gt;. &lt;/p&gt;
 &lt;p&gt;The objective of backpropagation is pretty clear: we need to calculate the partial derivatives of our parameters with respect to cost function (&lt;span class="math"&gt;\(J\)&lt;/span&gt;) in order to use it for gradient descent. The difficult part lies in keeping track of the calculations, since each partial derivative of parameters in each layer rely on inputs from the previous layer. Maybe it's also the fact that we are going backwards makes it hard for my brain to wrap my head around it.&lt;/p&gt;
@@ -128,7 +1309,7 @@
 &lt;p&gt;But notice that if we take the log of both sides, our objective stays the same. Instead of maximizing &lt;span class="math"&gt;\(p\)&lt;/span&gt;, we still just need to maximize the &lt;span class="math"&gt;\(log\)&lt;/span&gt; of &lt;span class="math"&gt;\(p\)&lt;/span&gt;, since the &lt;span class="math"&gt;\(log\)&lt;/span&gt; function increases monotonically. If we take the &lt;span class="math"&gt;\(log\)&lt;/span&gt; of both sides, and do a little math, we get:&lt;/p&gt;
 &lt;div class="math"&gt;$$log \ p(y | \hat{y}, \mathbf{x}) = log \ (y^{\hat{y}}(1-y)^{(1-\hat{y})})$$&lt;/div&gt;
 &lt;div class="math"&gt;$$log \ p(y | \hat{y}, \mathbf{x}) = \hat{y}log \ y + (1-\hat{y})log \ (1-y)$$&lt;/div&gt;
-&lt;p&gt;Notice that the left side just becomes &lt;span class="math"&gt;\(-\mathcal{L}(\hat{y}, y)\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;Notice that the right side just becomes &lt;span class="math"&gt;\(-\mathcal{L}(\hat{y}, y)\)&lt;/span&gt;.&lt;/p&gt;
 &lt;div class="math"&gt;$$log \ p(y | \hat{y}, x) = -\mathcal{L}(\hat{y}, y)$$&lt;/div&gt;
 &lt;div class="math"&gt;$$\mathcal{L}(\hat{y}, y) = -log \ p(y | \hat{y}, x)$$&lt;/div&gt;
 &lt;p&gt;So when we say we want to minimize &lt;span class="math"&gt;\(\mathcal{L}\)&lt;/span&gt;, we really mean we want to maximize the probability that &lt;span class="math"&gt;\(y\)&lt;/span&gt; is equal to it's value given our prediction &lt;span class="math"&gt;\(\hat{y}\)&lt;/span&gt; and feature vector &lt;span class="math"&gt;\(x\)&lt;/span&gt;. &lt;/p&gt;
@@ -1307,7 +2488,7 @@ y^{(m)}
 &lt;p&gt;&lt;img src="/images/nn_4.png" title="[nn_4]" alt="[nn_4]"&gt;&lt;/p&gt;
 &lt;p&gt;From the diagram, you can see that the input consists of all the entries from the previous layer (in this case the input layer from the &lt;span class="math"&gt;\(ith\)&lt;/span&gt; training example &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; and the output is the entry for the first hidden layer &lt;span class="math"&gt;\(a_1^{(i)[1]}\)&lt;/span&gt;.&lt;/p&gt;
 &lt;p&gt;&lt;img src="/images/nn_5.png" title="[nn_5]" alt="[nn_5]"&gt;&lt;/p&gt;
-&lt;p&gt;In order to calculate &lt;span class="math"&gt;\(a_1^{(i)[1]}\)&lt;/span&gt;, we take each entry from &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; and multiply it by a weight. The notation can be a little tricky, so let's break that down. Let's say we have &lt;span class="math"&gt;\(W^{[1]}_{13}\)&lt;/span&gt;. We multiply this guy by the third entry in &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, or &lt;span class="math"&gt;\(x^{(i)}_3\)&lt;/span&gt; to get the first entry in the &lt;span class="math"&gt;\(1st\)&lt;/span&gt; layer.&lt;/p&gt;
+&lt;p&gt;In order to calculate &lt;span class="math"&gt;\(a_1^{(i)[1]}\)&lt;/span&gt;, we take each entry from &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; and multiply it by a weight. The notation can be a little tricky, so let's break that down. Let's say we have &lt;span class="math"&gt;\(W^{[1]}_{13}\)&lt;/span&gt;. We multiply this guy by the third entry in &lt;span class="math"&gt;\(\textbf{x}\)&lt;/span&gt;, or &lt;span class="math"&gt;\(x^{(i)}_3\)&lt;/span&gt; to get the first entry in the &lt;span class="math"&gt;\(1st\)&lt;/span&gt; l ayer.&lt;/p&gt;
 &lt;p&gt;Let's breakdown the weights corresponding to &lt;span class="math"&gt;\(a_1^{(i)[1]}\)&lt;/span&gt; in our diagram. &lt;span class="math"&gt;\(\textbf{W}^{[1]}\)&lt;/span&gt; is a &lt;span class="math"&gt;\((4, 3)\)&lt;/span&gt; matrix:&lt;/p&gt;
 &lt;div class="math"&gt;$$
 \textbf{W}^{[1]} = 
@@ -1364,12 +2545,6 @@ $$&lt;/div&gt;
 &lt;p&gt;First, what's happening when we transition from our vector of features for the first training example &lt;span class="math"&gt;\(i\)&lt;/span&gt; to the activations from our first hidden layer. We start by multiplying &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; by the weights and bias of the first hidden layer, &lt;span class="math"&gt;\(\textbf{W}^{[1]}\)&lt;/span&gt; and &lt;span class="math"&gt;\(\textbf{b}^{[1]}\)&lt;/span&gt; to get &lt;span class="math"&gt;\(\textbf{z}^{(i)[1]}\)&lt;/span&gt;. People sometimes call &lt;span class="math"&gt;\(\textbf{z}^{(i)[1]}\)&lt;/span&gt; the activity of the hidden layer 1 for training example &lt;span class="math"&gt;\(i\)&lt;/span&gt;.&lt;/p&gt;
 &lt;div class="math"&gt;$$\textbf{z}^{(i)[1]} = \textbf{W}^{[1]}\textbf{x}^{(i)} + \textbf{b}^{[1]}$$&lt;/div&gt;
 &lt;p&gt;So we start by multiplying &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; by &lt;span class="math"&gt;\(\textbf{W}^{[1]}\)&lt;/span&gt;. &lt;span class="math"&gt;\(\textbf{x}^{(i)}\)&lt;/span&gt; is a (3 x 1) matrix, and &lt;span class="math"&gt;\(\textbf{W}^{[1]}\)&lt;/span&gt; is a (4 x 3) matrix. We then add the bias, &lt;span class="math"&gt;\(\textbf{b}^{[1]}\)&lt;/span&gt;. The dimensions of the bias &lt;span class="math"&gt;\(\textbf{b}^{[1]}\)&lt;/span&gt; match the dimensions of &lt;span class="math"&gt;\(\textbf{z}^{(i)[1]}\)&lt;/span&gt; which are (4, 1). Once we get the activity matrix &lt;span class="math"&gt;\(\textbf{z}^{(i)[1]}\)&lt;/span&gt;, we apply the activation function to each element in &lt;span class="math"&gt;\(\textbf{z}^{(i)[1]}\)&lt;/span&gt;. Recall that the activation function that we chose is ReLU, which we defined as:&lt;/p&gt;
-&lt;div class="math"&gt;$$
-g(z) = \begin{cases}
-   x &amp;amp;\text{if } z &amp;gt; 0  \\
-   0 &amp;amp;\text{otherwise}
-\end{cases}
-$$&lt;/div&gt;
 &lt;p&gt;So we get:&lt;/p&gt;
 &lt;div class="math"&gt;$$\textbf{a}^{(i)[1]} = g(\textbf{z}^{(i)[1]})$$&lt;/div&gt;
 &lt;p&gt;Which just indicates that the ReLU function &lt;span class="math"&gt;\(g()\)&lt;/span&gt; is applied elementwise to &lt;span class="math"&gt;\(\textbf{z}^{(i)[1]}\)&lt;/span&gt; to get &lt;span class="math"&gt;\(\textbf{a}^{(i)[1]}\)&lt;/span&gt;.&lt;/p&gt;
