@@ -407,39 +407,13 @@ article .meta a.comments_btn:hover {
 
   <article>
     <header>
-      <h2><a href="http://www.jasonosajima.com/svd.html">Singular Value Decomposition</a></h2>
-      <time datetime="" title="2019-11-22T00:00:00-08:00" pubdate>Fri 22 November 2019</time>
-    </header>
-
-    <div class="article_content">
-      
-<p>Some quick notes about Singular Value Decomposition (SVD) to develop an intuition that will help solve problems related to collaborative filtering, natural language processing (NLP), dimensionality reduction, image compression, denoising data etc.</p>
-
-    </div>
-
-    <div class="meta">
-      <div>
-        <a href="http://www.jasonosajima.com/svd.html" class="read_more">Read more &#8594;</a>
-      </div>
-
-      <div>
-            <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
-            <a href="http://www.jasonosajima.com/tag/linear-algebra.html" class="tag">linear algebra</a>
-      </div>
-
-    </div>
-
-  </article>
-  <div class="separator"></div>
-  <article>
-    <header>
       <h2><a href="http://www.jasonosajima.com/convnets_vgg.html">Convolutional Networks - VGG16</a></h2>
       <time datetime="" title="2018-08-18T00:00:00-07:00" pubdate>Sat 18 August 2018</time>
     </header>
 
     <div class="article_content">
       
-The Imagenet Large Scale Visual Recognition Challenge (<a href="http://www.image-net.org/challenges/LSVRC/">ILSVRC</a>) is an annual computer vision competition. Each year, teams compete on two tasks. The first is to detect objects within an image coming from 200 classes, which is called object localization. The second is to classify images, each labeled with one of 1000 categories, which is called image classification.
+The Imagenet Large Scale Visual Recognition Challenge (<a href="http://www.image-net.org/challenges/LSVRC/">ILSVRC</a>) is an annual computer vision competition. Each year, teams compete on two tasks. The first is to detect objects within an image coming from 200 classes, which is called object localization. The second is to classify images, each labeled with one of 1000 categories, which is called image classification.</p>
 <p>In 2012, Alex Krizhevsky, Ilya Sutskever and Geoffrey E. Hinton won the competition by a sizable margin using a convolutional network (ConvNet) named <a href="https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf">AlexNet</a>. This became a watershed moment for deep learning.</p>
 <p>Two years later, Karen Simonyan and Andrew Zisserman won 1st and 2nd place in the two tasks described above. Their model was also a ConvNet named VGG-19. VGG is the acronym for their lab at Oxford (Visual Geometry Group) and 19 is the number of layers in the model with trainable parameters.</p>
 <p>What attracted me to this model was its simplicity - the model shares most of the same basic architecture and algorithms as <a href="http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf">LeNet5</a>, one of the first ConvNets from the 90s. The main difference is the addition of several more layers (from 5 to 19), which seems to validate the idea that deeper networks are able to learn better representations (this trend continues with the introduction of Residual Networks, which won IVCLR the following year with a whopping 152 layers).</p>
@@ -470,9 +444,64 @@ The Imagenet Large Scale Visual Recognition Challenge (<a href="http://www.image
 
     <div class="article_content">
       
+
 <p>The hardest part about deep learning for me was backpropagation. Forward propagation made sense; basically you do a bunch of matrix multiplications, add some bias terms, and throw in non-linearities so it doesn't turn into one large matrix multiplication. Gradient descent also intuitively made sense to me as well; we want to use the partial derivatives of our parameters with respect to our cost function (<span class="math">\(J\)</span>) to update our parameters in order to minimize <span class="math">\(J\)</span>. </p>
 <p>The objective of backpropagation is pretty clear: we need to calculate the partial derivatives of our parameters with respect to cost function (<span class="math">\(J\)</span>) in order to use it for gradient descent. The difficult part lies in keeping track of the calculations, since each partial derivative of parameters in each layer rely on inputs from the previous layer. Maybe it's also the fact that we are going backwards makes it hard for my brain to wrap my head around it.</p>
+<script type='text/javascript'>if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
 
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'black ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
     </div>
 
     <div class="meta">
@@ -497,6 +526,7 @@ The Imagenet Large Scale Visual Recognition Challenge (<a href="http://www.image
 
     <div class="article_content">
       
+
 <p>When I started learning about neural networks, I found several articles and courses that guided you through their implementation in <code>numpy</code>. But when I started my research, I couldn't see past these basic implementations. In other words, I couldn't understand the concepts in research papers and I couldn't think of any interesting research ideas.</p>
 <p>In order to go forward I had to go backwards. I had to relearn many fundamental concepts. The two concepts that are probably the most fundamental to neural networks are forward propagation and backpropagation. I decided to write two blog posts explaining in depth how these two concepts work. My hope is that by the end of this two part series you will have a deeper understanding of the fundamental underpinnings of both.</p>
 
@@ -538,5 +568,23 @@ The Imagenet Large Scale Visual Recognition Challenge (<a href="http://www.image
       </p>
     </footer>
 -->
+    <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-15195255-2']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-15195255-2');
+    ga('send', 'pageview');
+</script>
     </body>
 </html>
