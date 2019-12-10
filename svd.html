@@ -470,9 +470,17 @@ article .meta a.comments_btn:hover {
 <p>So what people usually do to create embeddings for users, items, words, documents, etc. is to take the top <span class="math">\(k\)</span> values from the vectors created using SVD. Some people refer to this strategy as Latent Semantic Analysis, or LSA.</p>
 <p>How do you know what the value of <span class="math">\(k\)</span> is? A lot of people use trial and error, or by checking the <a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html">silhouette score</a>.</p>
 <p>Once you create the embeddings, how do you tell how similar embeddings are? People use cosine similarity, manhattan distance (<span class="math">\(L1\)</span>), or euclidian distance (<span class="math">\(L2\)</span>). In the example above, I used manhattan distance. Again, there's no default best metric to use and in practice people use trial and error.</p>
+<p>Some of the drawbacks of this method (as mentioned <a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf">here</a>): </p>
+<ul>
+<li>Dimensions of the matrix can change often (adding new users or movies), and each time the dimensions change, SVD must be performed again. </li>
+<li>The matrix can be very high dimensional</li>
+<li>Computational cost to perform SVD for a <span class="math">\(m\)</span> by <span class="math">\(n\)</span> matrix is <span class="math">\(O(mn\)</span>)</li>
+</ul>
+<p>For these reasons, iterative methods tend to be better, the simplest of these being <a href="/word2vec">word2vec</a>.</p>
 <h3>Resources</h3>
-<p>1)  <a href="https://www.youtube.com/watch?v=P5mlg91as1c&amp;t=236s">Great video on SVD that explains the math</a>
-2) <a href="http://andrew.gibiansky.com/blog/mathematics/cool-linear-algebra-singular-value-decomposition/">Using SVD to coompress an image example</a></p>
+<p>1)  <a href="https://www.youtube.com/watch?v=P5mlg91as1c&amp;t=236s">Great video on SVD that explains the math</a></p>
+<p>2) <a href="http://andrew.gibiansky.com/blog/mathematics/cool-linear-algebra-singular-value-decomposition/">Using SVD to coompress an image example</a></p>
+<p>3) <a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf">Notes from Stanford NLP course</a></p>
 <script type="text/javascript">if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
     var align = "center",
         indent = "0em",
@@ -541,6 +549,7 @@ article .meta a.comments_btn:hover {
             <div>
                     <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
                     <a href="http://www.jasonosajima.com/tag/linear-algebra.html" class="tag">linear algebra</a>
+                    <a href="http://www.jasonosajima.com/tag/natural-language-processing.html" class="tag">natural language processing</a>
             </div>
         </div>
     </article>

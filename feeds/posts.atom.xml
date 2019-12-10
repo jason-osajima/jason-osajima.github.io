@@ -60,9 +60,17 @@
 &lt;p&gt;So what people usually do to create embeddings for users, items, words, documents, etc. is to take the top &lt;span class="math"&gt;\(k\)&lt;/span&gt; values from the vectors created using SVD. Some people refer to this strategy as Latent Semantic Analysis, or LSA.&lt;/p&gt;
 &lt;p&gt;How do you know what the value of &lt;span class="math"&gt;\(k\)&lt;/span&gt; is? A lot of people use trial and error, or by checking the &lt;a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html"&gt;silhouette score&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;Once you create the embeddings, how do you tell how similar embeddings are? People use cosine similarity, manhattan distance (&lt;span class="math"&gt;\(L1\)&lt;/span&gt;), or euclidian distance (&lt;span class="math"&gt;\(L2\)&lt;/span&gt;). In the example above, I used manhattan distance. Again, there's no default best metric to use and in practice people use trial and error.&lt;/p&gt;
+&lt;p&gt;Some of the drawbacks of this method (as mentioned &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;here&lt;/a&gt;): &lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Dimensions of the matrix can change often (adding new users or movies), and each time the dimensions change, SVD must be performed again. &lt;/li&gt;
+&lt;li&gt;The matrix can be very high dimensional&lt;/li&gt;
+&lt;li&gt;Computational cost to perform SVD for a &lt;span class="math"&gt;\(m\)&lt;/span&gt; by &lt;span class="math"&gt;\(n\)&lt;/span&gt; matrix is &lt;span class="math"&gt;\(O(mn\)&lt;/span&gt;)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;For these reasons, iterative methods tend to be better, the simplest of these being &lt;a href="/word2vec"&gt;word2vec&lt;/a&gt;.&lt;/p&gt;
 &lt;h3&gt;Resources&lt;/h3&gt;
-&lt;p&gt;1)  &lt;a href="https://www.youtube.com/watch?v=P5mlg91as1c&amp;amp;t=236s"&gt;Great video on SVD that explains the math&lt;/a&gt;
-2) &lt;a href="http://andrew.gibiansky.com/blog/mathematics/cool-linear-algebra-singular-value-decomposition/"&gt;Using SVD to coompress an image example&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;1)  &lt;a href="https://www.youtube.com/watch?v=P5mlg91as1c&amp;amp;t=236s"&gt;Great video on SVD that explains the math&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;2) &lt;a href="http://andrew.gibiansky.com/blog/mathematics/cool-linear-algebra-singular-value-decomposition/"&gt;Using SVD to coompress an image example&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;3) &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;Notes from Stanford NLP course&lt;/a&gt;&lt;/p&gt;
 &lt;script type="text/javascript"&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
     var align = "center",
         indent = "0em",
@@ -124,7 +132,241 @@
     (document.body || document.getElementsByTagName('head')[0]).appendChild(configscript);
     (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
 }
-&lt;/script&gt;</content><category term="posts"></category><category term="machine learning"></category><category term="linear algebra"></category></entry><entry><title>Convolutional Networks - VGG16</title><link href="http://www.jasonosajima.com/convnets_vgg.html" rel="alternate"></link><published>2018-08-18T00:00:00-07:00</published><updated>2018-08-18T00:00:00-07:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2018-08-18:/convnets_vgg.html</id><summary type="html">
+&lt;/script&gt;</content><category term="posts"></category><category term="machine learning"></category><category term="linear algebra"></category><category term="natural language processing"></category></entry><entry><title>word2vec</title><link href="http://www.jasonosajima.com/word2vec.html" rel="alternate"></link><published>2019-11-22T00:00:00-08:00</published><updated>2019-11-22T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-11-22:/word2vec.html</id><summary type="html">
+</summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
+
+
+
+
+&lt;p&gt;word2vec is an iterative model that can be used to create embeddings of words (or embeddings of &lt;a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e"&gt;pretty much anything&lt;/a&gt;). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.&lt;/p&gt;
+&lt;h3&gt;Why use word2vec?&lt;/h3&gt;
+&lt;p&gt;For a lot of machine learning tasks, we need to figure out the relationship between items. Take for example an NLP task where we use words as items. We somehow need to learn numerical representations of words so that the model can understand the relationship between words. The most straightforward way of representing words numerically would be to represent them as vectors. So, imagine that we trained a model and learned vectors for each word. We'd expect that the word "cat" and "dog" would be close in distance since they are both pets, and that "cat" would be far from "gym", because there isn't much of a relationship between these two words. We sometimes call these vectors embeddings.&lt;/p&gt;
+&lt;h3&gt;What is word2vec?&lt;/h3&gt;
+&lt;p&gt;word2vec is a model that attempts to learn these embeddings based on a corpus of text (or a group of items). The basic idea is that we initialize a vector for each word in the corpus with random numbers. We then iterate through each word of each document (a document is just a group of words that are related), grab the vectors of the closest n-words on either side of our target word, concatenate these vectors, forward propagate it through a linear layer + softmax function, and attempt to predict what our target word was. We then backpropagate the error between our prediction and the actual target word, and update not only the weights of the linear layer, but also the vectors (or embeddings) of our neighbor words.&lt;/p&gt;
+&lt;p&gt;Imagine that we have a corpus of two documents:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;corpus&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;document_1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;document_2&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The documents are just one sentence long:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;document1&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;the&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;cat&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;loves&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;fish&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="n"&gt;document2&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;the&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;person&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;hates&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;fish&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;So the goal of using word2vec is to learn embeddings for all of the words in our corpus. In this case, the words in our corpus are:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="err"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;the&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;cat&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;loves&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;fish&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;person&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;hates&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="err"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We can create our vocab &lt;code&gt;word_to_ix&lt;/code&gt; using the following code:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;corpus_to_vocab&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;corpus&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+    &lt;span class="s2"&gt;&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+    &lt;span class="nv"&gt;Takes&lt;/span&gt; &lt;span class="nv"&gt;a&lt;/span&gt; &lt;span class="nv"&gt;corpus&lt;/span&gt; &lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;list&lt;/span&gt; &lt;span class="nv"&gt;of&lt;/span&gt; &lt;span class="nv"&gt;documents&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt; &lt;span class="nv"&gt;and&lt;/span&gt; &lt;span class="nv"&gt;converts&lt;/span&gt;
+    &lt;span class="nv"&gt;it&lt;/span&gt; &lt;span class="nv"&gt;to&lt;/span&gt; &lt;span class="nv"&gt;two&lt;/span&gt; &lt;span class="nv"&gt;dictionaries&lt;/span&gt;:
+      &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;: &lt;span class="nv"&gt;key&lt;/span&gt; &lt;span class="nv"&gt;are&lt;/span&gt; &lt;span class="nv"&gt;words&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;vocab&lt;/span&gt;, &lt;span class="nv"&gt;values&lt;/span&gt;
+        &lt;span class="nv"&gt;are&lt;/span&gt; &lt;span class="nv"&gt;the&lt;/span&gt; &lt;span class="nv"&gt;unique&lt;/span&gt; &lt;span class="nv"&gt;indices&lt;/span&gt;
+      &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="nv"&gt;ix_to_word&lt;/span&gt;: &lt;span class="nv"&gt;key&lt;/span&gt; &lt;span class="nv"&gt;are&lt;/span&gt; &lt;span class="nv"&gt;the&lt;/span&gt; &lt;span class="nv"&gt;unique&lt;/span&gt; &lt;span class="nv"&gt;indices&lt;/span&gt;,
+        &lt;span class="nv"&gt;values&lt;/span&gt; &lt;span class="nv"&gt;are&lt;/span&gt; &lt;span class="nv"&gt;the&lt;/span&gt; &lt;span class="nv"&gt;words&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;vocab&lt;/span&gt;
+    &lt;span class="s2"&gt;&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+    &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;, &lt;span class="nv"&gt;ix_to_word&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; {}, {}
+    &lt;span class="nv"&gt;ix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;document&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;corpus&lt;/span&gt;:
+        &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;word&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;document&lt;/span&gt;:
+            &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="nv"&gt;word&lt;/span&gt; &lt;span class="nv"&gt;not&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;.&lt;span class="nv"&gt;keys&lt;/span&gt;&lt;span class="ss"&gt;()&lt;/span&gt;:
+                &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;word&lt;/span&gt;], &lt;span class="nv"&gt;ix_to_word&lt;/span&gt;[&lt;span class="nv"&gt;ix&lt;/span&gt;] &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;ix&lt;/span&gt;, &lt;span class="nv"&gt;word&lt;/span&gt;
+                &lt;span class="nv"&gt;ix&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;, &lt;span class="nv"&gt;ix_to_word&lt;/span&gt;
+
+&lt;span class="nv"&gt;EMBEDDING_DIM&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;
+
+&lt;span class="nv"&gt;document1&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; [&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="s"&gt;the&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;, &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="s"&gt;cat&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;, &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="s"&gt;loves&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;, &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="s"&gt;fish&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;]
+&lt;span class="nv"&gt;document2&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; [&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="s"&gt;the&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;, &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="s"&gt;person&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;, &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="s"&gt;hates&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;, &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="s"&gt;fish&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;]
+&lt;span class="nv"&gt;corpus&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; [&lt;span class="nv"&gt;document1&lt;/span&gt;, &lt;span class="nv"&gt;document2&lt;/span&gt;]
+
+# &lt;span class="nv"&gt;vocab&lt;/span&gt;
+&lt;span class="nv"&gt;word_to_ix&lt;/span&gt;, &lt;span class="nv"&gt;ix_to_word&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;corpus_to_vocab&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;corpus&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And we can instantiate embeddings for each of these words in a matrix where the number of rows are equal to the number of words in our vocab and the number of columns is the number of dimensions of our embedding vector. Let's make it simple and work with 3 dimensional embeddings.&lt;/p&gt;
+&lt;div class="math"&gt;$$\textbf{V} = \begin{bmatrix}
+  1 &amp;amp; 1 &amp;amp; 4 \\
+   5 &amp;amp; 5 &amp;amp; 1 \\
+   2 &amp;amp; 1 &amp;amp; 5
+\end{bmatrix}$$&lt;/div&gt;
+&lt;p&gt;If we were interested in looking up the embedding for the word &lt;code&gt;the&lt;/code&gt;, we would lookup &lt;code&gt;the&lt;/code&gt; in our &lt;code&gt;vocab&lt;/code&gt;, get the index &lt;span class="math"&gt;\(0\)&lt;/span&gt;, and return the embedding &lt;code&gt;[1, 1, 4]&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;Now that we've explained the setup of word embeddings, how do we learn them? There are two main ways to learn embeddings using word2vec: Continuous Bag of Words (CBOW), and skipgram. We'll start with explaining CBOW.&lt;/p&gt;
+&lt;h2&gt;Continuous Bag of Words (CBOW)&lt;/h2&gt;
+&lt;p&gt;The first step for implementing CBOW is to instantiate the embedding matrix described above. Let's create an embedding matrix for the words in our vocab using tensorflow.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;tensorflow&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;keras&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;tensorflow.keras&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;layers&lt;/span&gt;
+
+&lt;span class="n"&gt;N_WORDS&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;word_to_ix&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;keys&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+&lt;span class="n"&gt;embedding_layer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Embedding&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;N_WORDS&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;EMBEDDING_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; 
+                                   &lt;span class="n"&gt;embeddings_initializer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;RandomNormal&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                                   &lt;span class="n"&gt;input_shape&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We define an &lt;code&gt;input_shape&lt;/code&gt; because the embedding layer is the first layer of our model. The reason why it has an input shape of &lt;span class="math"&gt;\((2,)\)&lt;/span&gt; is that for each target word, we pass in as input two context words, represented as indices. So if we wanted to pass in "the" and "loves", we would pass in the vector &lt;code&gt;[0,2]&lt;/code&gt;. &lt;/p&gt;
+&lt;p&gt;Great, so now we have an embedding matrix. As an example, we can look up the embedding for &lt;code&gt;the&lt;/code&gt; by passing a &lt;code&gt;0&lt;/code&gt;:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;embedding_layer&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Next we need to setup our training set for CBOW. Our output is a word in a document, and the input is the context of the word, which is just the n-words to the left and right of the output word. So for example, if we were converting &lt;code&gt;document1&lt;/code&gt; to our training set, we would end up with:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="p"&gt;[([&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;the&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;loves&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;cat&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+ &lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;cat&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;fish&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;loves&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Notice we don't include &lt;code&gt;"the"&lt;/code&gt; and &lt;code&gt;"fish"&lt;/code&gt; in our train set, because we wouldn't have enough context words to construct the training example for them. This isn't a problem when we have a large corpus (but might look like a problem with our small corpus of two document sentences).&lt;/p&gt;
+&lt;p&gt;We'll convert the words in the train set to indices so it's easy to lookup the word's embeddings:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="p"&gt;[([&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+ &lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;)]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;In code, this looks like:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nv"&gt;train_set&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; []
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;document&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;corpus&lt;/span&gt;:
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;i&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;range&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;, &lt;span class="nv"&gt;len&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;document&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="nv"&gt;target_word&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;document&lt;/span&gt;[&lt;span class="nv"&gt;i&lt;/span&gt;]]
+        &lt;span class="nv"&gt;context&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; [&lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;document&lt;/span&gt;[&lt;span class="nv"&gt;i&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;]], &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;document&lt;/span&gt;[&lt;span class="nv"&gt;i&lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;]]]
+        &lt;span class="nv"&gt;train_set&lt;/span&gt;.&lt;span class="nv"&gt;append&lt;/span&gt;&lt;span class="ss"&gt;((&lt;/span&gt;&lt;span class="nv"&gt;context&lt;/span&gt;, &lt;span class="nv"&gt;target_word&lt;/span&gt;&lt;span class="ss"&gt;))&lt;/span&gt;
+
+&lt;span class="nv"&gt;X&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;np&lt;/span&gt;.&lt;span class="nv"&gt;array&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;[&lt;span class="nv"&gt;example&lt;/span&gt;[&lt;span class="mi"&gt;0&lt;/span&gt;] &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;example&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;train_set&lt;/span&gt;]&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="nv"&gt;y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;np&lt;/span&gt;.&lt;span class="nv"&gt;array&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;[&lt;span class="nv"&gt;example&lt;/span&gt;[&lt;span class="mi"&gt;1&lt;/span&gt;] &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;example&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;train_set&lt;/span&gt;]&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="nv"&gt;y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;keras&lt;/span&gt;.&lt;span class="nv"&gt;utils&lt;/span&gt;.&lt;span class="nv"&gt;to_categorical&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;y&lt;/span&gt;, &lt;span class="nv"&gt;num_classes&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;N_WORDS&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Now that we constructed our train set, let's setup our model.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;keras&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Sequential&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;
+  &lt;span class="n"&gt;embedding_layer&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+  &lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;GlobalAveragePooling1D&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
+  &lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Dense&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;N_WORDS&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;activation&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;softmax&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Let's go through the three layers of this model. &lt;code&gt;embedding_layer&lt;/code&gt; was already described above, and takes as input two indices for the two context words and returns their two embeddings. The output therefore has shape &lt;code&gt;(None,2,3)&lt;/code&gt;. The first dimension is &lt;code&gt;None&lt;/code&gt; because it depends on how many words we pass into the model during training. So it could be &lt;span class="math"&gt;\(1\)&lt;/span&gt; if we pass in one training example, and &lt;span class="math"&gt;\(5\)&lt;/span&gt; if we pass in five training examples. &lt;code&gt;GlobalAveragePooling1d&lt;/code&gt; takes the average of the two embeddings, and its output is  &lt;code&gt;(None,1,3)&lt;/code&gt;. Finally, &lt;code&gt;Dense&lt;/code&gt; is a fully-connected layer that multiplies the output of &lt;code&gt;GlobalAveragePooling1d&lt;/code&gt; by a weight matrix and adds a bias. The resulting vector is then passed through a &lt;code&gt;softmax&lt;/code&gt; activation, so that we end up with a vector of probabilities for the index of the target output word.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;compile&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;optimizer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;adam&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+              &lt;span class="n"&gt;loss&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;categorical_crossentropy&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+              &lt;span class="n"&gt;metrics&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;accuracy&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;span class="n"&gt;history&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fit&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;X&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;X&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;shape&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Next, we compile the model, using &lt;code&gt;categorical_crossentropy&lt;/code&gt; as our loss function since this is a multi-category problem, and then we are done! Obviously, our word embeddings won't be very "good" because we only trained a model on  two sentences. To check how the embeddings for the word &lt;code&gt;the&lt;/code&gt; changed, we just pass:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nf"&gt;embedding_layer&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;word_to_ix&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;`the`&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;So what changes when we use skipgram?&lt;/p&gt;
+&lt;h2&gt;Skip-Gram&lt;/h2&gt;
+&lt;p&gt;The main change is that we switch the output and input for the model. So the input into the model is now the target word, and the output are the context words. For example, the input could now be the word &lt;code&gt;cat&lt;/code&gt;, and the output could be the words &lt;code&gt;love&lt;/code&gt; and &lt;code&gt;the&lt;/code&gt;. We represent the input word as its index, so we'd feed in &lt;span class="math"&gt;\(1\)&lt;/span&gt; for the word &lt;code&gt;cat&lt;/code&gt;. What would the output be? If the context is &lt;code&gt;love&lt;/code&gt; and &lt;code&gt;the&lt;/code&gt;, the output would be &lt;code&gt;[1,1,0,0,0]&lt;/code&gt;. I like to call this multi-hot encoding, but I'm not sure if that's the best term for it. We also change the loss to &lt;code&gt;binary_crossentropy&lt;/code&gt;, since we now have &lt;a href="https://github.com/keras-team/keras/issues/2166"&gt;converted our problem to multi-label&lt;/a&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nv"&gt;train_set&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; []
+
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;document&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;corpus&lt;/span&gt;:
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;i&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;range&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;, &lt;span class="nv"&gt;len&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;document&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="nv"&gt;target_word&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;document&lt;/span&gt;[&lt;span class="nv"&gt;i&lt;/span&gt;]]
+        &lt;span class="nv"&gt;context&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; [&lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;document&lt;/span&gt;[&lt;span class="nv"&gt;i&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;]], &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;document&lt;/span&gt;[&lt;span class="nv"&gt;i&lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;]]]
+        &lt;span class="nv"&gt;train_set&lt;/span&gt;.&lt;span class="nv"&gt;append&lt;/span&gt;&lt;span class="ss"&gt;((&lt;/span&gt;&lt;span class="nv"&gt;target_word&lt;/span&gt;, &lt;span class="nv"&gt;context&lt;/span&gt;&lt;span class="ss"&gt;))&lt;/span&gt;
+
+&lt;span class="nv"&gt;N_WORDS&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;len&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;word_to_ix&lt;/span&gt;.&lt;span class="nv"&gt;keys&lt;/span&gt;&lt;span class="ss"&gt;())&lt;/span&gt;
+&lt;span class="nv"&gt;embedding_layer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;layers&lt;/span&gt;.&lt;span class="nv"&gt;Embedding&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;N_WORDS&lt;/span&gt;, &lt;span class="nv"&gt;EMBEDDING_DIM&lt;/span&gt;, 
+                                   &lt;span class="nv"&gt;embeddings_initializer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="s"&gt;RandomNormal&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;,
+                                   &lt;span class="nv"&gt;input_shape&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;,&lt;span class="ss"&gt;))&lt;/span&gt;
+
+&lt;span class="nv"&gt;X&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;np&lt;/span&gt;.&lt;span class="nv"&gt;array&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;[&lt;span class="nv"&gt;example&lt;/span&gt;[&lt;span class="mi"&gt;0&lt;/span&gt;] &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;example&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;train_set&lt;/span&gt;]&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="nv"&gt;y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;np&lt;/span&gt;.&lt;span class="nv"&gt;array&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;[&lt;span class="nv"&gt;example&lt;/span&gt;[&lt;span class="mi"&gt;1&lt;/span&gt;] &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;example&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;train_set&lt;/span&gt;]&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="nv"&gt;y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;keras&lt;/span&gt;.&lt;span class="nv"&gt;utils&lt;/span&gt;.&lt;span class="nv"&gt;to_categorical&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;y&lt;/span&gt;, &lt;span class="nv"&gt;num_classes&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;N_WORDS&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="nv"&gt;y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;np&lt;/span&gt;.&lt;span class="nv"&gt;sum&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;y&lt;/span&gt;, &lt;span class="nv"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;.&lt;span class="nv"&gt;astype&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;int&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+&lt;span class="nv"&gt;model&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;keras&lt;/span&gt;.&lt;span class="nv"&gt;Sequential&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;[
+  &lt;span class="nv"&gt;embedding_layer&lt;/span&gt;,
+  &lt;span class="nv"&gt;layers&lt;/span&gt;.&lt;span class="nv"&gt;GlobalAveragePooling1D&lt;/span&gt;&lt;span class="ss"&gt;()&lt;/span&gt;,
+  &lt;span class="nv"&gt;layers&lt;/span&gt;.&lt;span class="nv"&gt;Dense&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;N_WORDS&lt;/span&gt;, &lt;span class="nv"&gt;activation&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;softmax&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;,
+]&lt;span class="ss"&gt;)&lt;/span&gt;
+
+&lt;span class="nv"&gt;model&lt;/span&gt;.&lt;span class="nv"&gt;compile&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;optimizer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;adam&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;,
+              &lt;span class="nv"&gt;loss&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;binary_crossentropy&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;,
+              &lt;span class="nv"&gt;metrics&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;[&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;accuracy&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;]&lt;span class="ss"&gt;)&lt;/span&gt;
+
+&lt;span class="nv"&gt;history&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;model&lt;/span&gt;.&lt;span class="nv"&gt;fit&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;X&lt;/span&gt;,&lt;span class="nv"&gt;y&lt;/span&gt;, &lt;span class="nv"&gt;batch_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;X&lt;/span&gt;.&lt;span class="nv"&gt;shape&lt;/span&gt;[&lt;span class="mi"&gt;0&lt;/span&gt;]&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Conclusion&lt;/h3&gt;
+&lt;p&gt;So we now know how to implement CBOW and SkipGram word2vec in tensorflow. Hooray! Don't get too excited though: these implementations are not very practical. The reason is because the number of words will not typically be 6, like in our example. Let's imagine that we implemented word2vec using all of wikipedia. Wikipedia has 2.9 billion words. We can't have a 2.9 billion one-hot or multi-hot encoded output. Luckily, we have a way to get around this by using negative sampling, which was introduced in the &lt;a href="https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf"&gt;original word2vec paper&lt;/a&gt;.&lt;/p&gt;
+&lt;h3&gt;Resources&lt;/h3&gt;
+&lt;p&gt;1) &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;Notes from Stanford NLP course&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;2) &lt;a href="https://arxiv.org/pdf/1301.3781.pdf"&gt;word2vec paper&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;3) &lt;a href="https://stackoverflow.com/questions/38287772/cbow-v-s-skip-gram-why-invert-context-and-target-words"&gt;difference between skipgram and cbow&lt;/a&gt;&lt;/p&gt;
+&lt;script type="text/javascript"&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width &lt; 768) ? "left" : align;
+        indent = (screen.width &lt; 768) ? "0em" : indent;
+        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
+
+    var configscript = document.createElement('script');
+    configscript.type = 'text/x-mathjax-config';
+    configscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'none' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        availableFonts: ['STIX', 'TeX']," +
+        "        preferredFont: 'STIX'," +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'black ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(configscript);
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+&lt;/script&gt;</content><category term="posts"></category><category term="machine learning"></category><category term="linear algebra"></category><category term="natural language processing"></category></entry><entry><title>Convolutional Networks - VGG16</title><link href="http://www.jasonosajima.com/convnets_vgg.html" rel="alternate"></link><published>2018-08-18T00:00:00-07:00</published><updated>2018-08-18T00:00:00-07:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2018-08-18:/convnets_vgg.html</id><summary type="html">
 The Imagenet Large Scale Visual Recognition Challenge (&lt;a href="http://www.image-net.org/challenges/LSVRC/"&gt;ILSVRC&lt;/a&gt;) is an annual computer vision competition. Each year, teams compete on two tasks. The first is to detect objects within an image coming from 200 classes, which is called object localization. The second is to classify images, each labeled with one of 1000 categories, which is called image classification.
 &lt;p&gt;In 2012, Alex Krizhevsky, Ilya Sutskever and Geoffrey E. Hinton won the competition by a sizable margin using a convolutional network (ConvNet) named &lt;a href="https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf"&gt;AlexNet&lt;/a&gt;. This became a watershed moment for deep learning.&lt;/p&gt;
 &lt;p&gt;Two years later, Karen Simonyan and Andrew Zisserman won 1st and 2nd place in the two tasks described above. Their model was also a ConvNet named VGG-19. VGG is the acronym for their lab at Oxford (Visual Geometry Group) and 19 is the number of layers in the model with trainable parameters.&lt;/p&gt;
