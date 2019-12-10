@@ -6,7 +6,7 @@
         <meta name="author" content="Jason Osajima">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width">
-        <title>Home | Jason {osa-jima}</title>
+        <title>Archives | Jason {osa-jima}</title>
 
 	<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
 	<link rel="icon" href="/favicon.ico" type="image/x-icon">
@@ -403,187 +403,26 @@ article .meta a.comments_btn:hover {
         </header>
 
         <div id="wrap">
-<div class="container index">
+<div class="container list">
+    <article>
+        <h1 style="margin-bottom: 30px;">Tag: word2vec</h1>
 
-  <article>
-    <header>
-      <h2><a href="http://www.jasonosajima.com/ns.html">word2vec - Negative Sampling</a></h2>
-      <time datetime="" title="2019-12-10T00:00:00-08:00" pubdate>Tue 10 December 2019</time>
-    </header>
-
-    <div class="article_content">
-      
-<p>In the <a href="https://papers.nips.cc/ paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">original word2vec paper</a>, the authors introduced Negative Sampling, which is a technique to overcome the computational limitations of vanilla Skip-Gram. Recall that in the <a href="/ns">previous post</a>, we had a vocabulary of 6 words, so the output of Skip-Gram was a vector of 6 binary elements. However, if we had a vocabulary of, say 170,000 words, we'd find it difficult to compute our loss function for every step of training the model. </p>
-<p>In this post, we will discuss the changes to Skip-Gram using negative sampling and update our Tensorflow word2vec implementation to use it.
-</p>
-    </div>
-
-    <div class="meta">
-      <div>
-        <a href="http://www.jasonosajima.com/ns.html" class="read_more">Read more &#8594;</a>
-      </div>
-
-      <div>
-            <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
-            <a href="http://www.jasonosajima.com/tag/natural-language-processing.html" class="tag">natural language processing</a>
-            <a href="http://www.jasonosajima.com/tag/word2vec.html" class="tag">word2vec</a>
-      </div>
-
-    </div>
-
-  </article>
-  <div class="separator"></div>
-  <article>
-    <header>
-      <h2><a href="http://www.jasonosajima.com/word2vec.html">word2vec - CBOW and Skip-Gram</a></h2>
-      <time datetime="" title="2019-12-09T00:00:00-08:00" pubdate>Mon 09 December 2019</time>
-    </header>
-
-    <div class="article_content">
-      
-<p>word2vec is an iterative model that can be used to create embeddings of words (or embeddings of <a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e">pretty much anything</a>). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.
-</p>
-    </div>
-
-    <div class="meta">
-      <div>
-        <a href="http://www.jasonosajima.com/word2vec.html" class="read_more">Read more &#8594;</a>
-      </div>
-
-      <div>
-            <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
-            <a href="http://www.jasonosajima.com/tag/natural-language-processing.html" class="tag">natural language processing</a>
-            <a href="http://www.jasonosajima.com/tag/word2vec.html" class="tag">word2vec</a>
-      </div>
-
-    </div>
-
-  </article>
-  <div class="separator"></div>
-  <article>
-    <header>
-      <h2><a href="http://www.jasonosajima.com/svd.html">Singular Value Decomposition</a></h2>
-      <time datetime="" title="2019-11-22T00:00:00-08:00" pubdate>Fri 22 November 2019</time>
-    </header>
-
-    <div class="article_content">
-      
-<p>Some quick notes about Singular Value Decomposition (SVD) to develop an intuition that will help solve problems related to collaborative filtering, natural language processing (NLP), dimensionality reduction, image compression, denoising data etc.</p>
-
-    </div>
-
-    <div class="meta">
-      <div>
-        <a href="http://www.jasonosajima.com/svd.html" class="read_more">Read more &#8594;</a>
-      </div>
-
-      <div>
-            <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
-            <a href="http://www.jasonosajima.com/tag/linear-algebra.html" class="tag">linear algebra</a>
-            <a href="http://www.jasonosajima.com/tag/natural-language-processing.html" class="tag">natural language processing</a>
-      </div>
-
-    </div>
-
-  </article>
-  <div class="separator"></div>
-  <article>
-    <header>
-      <h2><a href="http://www.jasonosajima.com/convnets_vgg.html">Convolutional Networks - VGG16</a></h2>
-      <time datetime="" title="2018-08-18T00:00:00-07:00" pubdate>Sat 18 August 2018</time>
-    </header>
-
-    <div class="article_content">
-      
-The Imagenet Large Scale Visual Recognition Challenge (<a href="http://www.image-net.org/challenges/LSVRC/">ILSVRC</a>) is an annual computer vision competition. Each year, teams compete on two tasks. The first is to detect objects within an image coming from 200 classes, which is called object localization. The second is to classify images, each labeled with one of 1000 categories, which is called image classification.
-<p>In 2012, Alex Krizhevsky, Ilya Sutskever and Geoffrey E. Hinton won the competition by a sizable margin using a convolutional network (ConvNet) named <a href="https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf">AlexNet</a>. This became a watershed moment for deep learning.</p>
-<p>Two years later, Karen Simonyan and Andrew Zisserman won 1st and 2nd place in the two tasks described above. Their model was also a ConvNet named VGG-19. VGG is the acronym for their lab at Oxford (Visual Geometry Group) and 19 is the number of layers in the model with trainable parameters.</p>
-<p>What attracted me to this model was its simplicity - the model shares most of the same basic architecture and algorithms as <a href="http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf">LeNet5</a>, one of the first ConvNets from the 90s. The main difference is the addition of several more layers (from 5 to 19), which seems to validate the idea that deeper networks are able to learn better representations (this trend continues with the introduction of Residual Networks, which won IVCLR the following year with a whopping 152 layers).</p>
-
-    </div>
-
-    <div class="meta">
-      <div>
-        <a href="http://www.jasonosajima.com/convnets_vgg.html" class="read_more">Read more &#8594;</a>
-      </div>
-
-      <div>
-            <a href="http://www.jasonosajima.com/tag/neural-networks.html" class="tag">neural networks</a>
-            <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
-            <a href="http://www.jasonosajima.com/tag/convolutional-networks.html" class="tag">convolutional networks</a>
-            <a href="http://www.jasonosajima.com/tag/vgg.html" class="tag">VGG</a>
-      </div>
-
-    </div>
-
-  </article>
-  <div class="separator"></div>
-  <article>
-    <header>
-      <h2><a href="http://www.jasonosajima.com/backprop.html">The Math behind Neural Networks - Backpropagation</a></h2>
-      <time datetime="" title="2018-07-18T00:00:00-07:00" pubdate>Wed 18 July 2018</time>
-    </header>
-
-    <div class="article_content">
-      
-<p>The hardest part about deep learning for me was backpropagation. Forward propagation made sense; basically you do a bunch of matrix multiplications, add some bias terms, and throw in non-linearities so it doesn't turn into one large matrix multiplication. Gradient descent also intuitively made sense to me as well; we want to use the partial derivatives of our parameters with respect to our cost function (<span class="math">\(J\)</span>) to update our parameters in order to minimize <span class="math">\(J\)</span>. </p>
-<p>The objective of backpropagation is pretty clear: we need to calculate the partial derivatives of our parameters with respect to cost function (<span class="math">\(J\)</span>) in order to use it for gradient descent. The difficult part lies in keeping track of the calculations, since each partial derivative of parameters in each layer rely on inputs from the previous layer. Maybe it's also the fact that we are going backwards makes it hard for my brain to wrap my head around it.</p>
-
-    </div>
-
-    <div class="meta">
-      <div>
-        <a href="http://www.jasonosajima.com/backprop.html" class="read_more">Read more &#8594;</a>
-      </div>
-
-      <div>
-            <a href="http://www.jasonosajima.com/tag/neural-networks.html" class="tag">neural networks</a>
-            <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
-      </div>
-
-    </div>
-
-  </article>
-  <div class="separator"></div>
-  <article>
-    <header>
-      <h2><a href="http://www.jasonosajima.com/forwardprop.html">The Math behind Neural Networks - Forward Propagation</a></h2>
-      <time datetime="" title="2018-07-18T00:00:00-07:00" pubdate>Wed 18 July 2018</time>
-    </header>
-
-    <div class="article_content">
-      
-<p>When I started learning about neural networks, I found several articles and courses that guided you through their implementation in <code>numpy</code>. But when I started my research, I couldn't see past these basic implementations. In other words, I couldn't understand the concepts in research papers and I couldn't think of any interesting research ideas.</p>
-<p>In order to go forward I had to go backwards. I had to relearn many fundamental concepts. The two concepts that are probably the most fundamental to neural networks are forward propagation and backpropagation. I decided to write two blog posts explaining in depth how these two concepts work. My hope is that by the end of this two part series you will have a deeper understanding of the fundamental underpinnings of both.</p>
-
-    </div>
-
-    <div class="meta">
-      <div>
-        <a href="http://www.jasonosajima.com/forwardprop.html" class="read_more">Read more &#8594;</a>
-      </div>
-
-      <div>
-            <a href="http://www.jasonosajima.com/tag/neural-networks.html" class="tag">neural networks</a>
-            <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
-      </div>
-
-    </div>
-
-  </article>
-  <div class="separator"></div>
-
-  <nav class="pagination row">
-    <div class="col-xs-6 left">
-    </div>
-    <div class="col-xs-6 right">
-    </div>
-  </nav>
-
-  </div>
-
+        <ul class="double-list">
+            <li>
+                <a href='/ns.html'>
+                    <h2>word2vec - Negative Sampling</h2>
+                    <span>10.12.2019</span>
+                </a>
+            </li>
+            <li>
+                <a href='/word2vec.html'>
+                    <h2>word2vec - CBOW and Skip-Gram</h2>
+                    <span>09.12.2019</span>
+                </a>
+            </li>
+        </ul>
+    </article>
 </div>
-
         </div>
 <!--
     <footer>

@@ -1,7 +1,245 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Jason {osa-jima}</title><link href="http://www.jasonosajima.com/" rel="alternate"></link><link href="http://www.jasonosajima.com/feeds/all.atom.xml" rel="self"></link><id>http://www.jasonosajima.com/</id><updated>2019-12-09T00:00:00-08:00</updated><subtitle>Machine Learning concepts, deconstructed.</subtitle><entry><title>word2vec - CBOW and Skip-Gram</title><link href="http://www.jasonosajima.com/word2vec.html" rel="alternate"></link><published>2019-12-09T00:00:00-08:00</published><updated>2019-12-09T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-12-09:/word2vec.html</id><summary type="html">
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Jason {osa-jima}</title><link href="http://www.jasonosajima.com/" rel="alternate"></link><link href="http://www.jasonosajima.com/feeds/all.atom.xml" rel="self"></link><id>http://www.jasonosajima.com/</id><updated>2019-12-10T00:00:00-08:00</updated><subtitle>Machine Learning concepts, deconstructed.</subtitle><entry><title>word2vec - Negative Sampling</title><link href="http://www.jasonosajima.com/ns.html" rel="alternate"></link><published>2019-12-10T00:00:00-08:00</published><updated>2019-12-10T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-12-10:/ns.html</id><summary type="html">
+&lt;p&gt;In the &lt;a href="https://papers.nips.cc/ paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf"&gt;original word2vec paper&lt;/a&gt;, the authors introduced Negative Sampling, which is a technique to overcome the computational limitations of vanilla Skip-Gram. Recall that in the &lt;a href="/ns"&gt;previous post&lt;/a&gt;, we had a vocabulary of 6 words, so the output of Skip-Gram was a vector of 6 binary elements. However, if we had a vocabulary of, say 170,000 words, we'd find it difficult to compute our loss function for every step of training the model. &lt;/p&gt;
+&lt;p&gt;In this post, we will discuss the changes to Skip-Gram using negative sampling and update our Tensorflow word2vec implementation to use it.
+&lt;/p&gt;</summary><content type="html">&lt;p&gt;&lt;em&gt;This is part two in a two-part series on the word2vec. Part one is about CBOW and Skip-Gram and can be found &lt;a href="/word2vec"&gt;here&lt;/a&gt;. Part two is about negative sampling.&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;Introduction&lt;/h2&gt;
+
+
+&lt;p&gt;In the &lt;a href="https://papers.nips.cc/ paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf"&gt;original word2vec paper&lt;/a&gt;, the authors introduced Negative Sampling, which is a technique to overcome the computational limitations of vanilla Skip-Gram. Recall that in the &lt;a href="/ns"&gt;previous post&lt;/a&gt;, we had a vocabulary of 6 words, so the output of Skip-Gram was a vector of 6 binary elements. However, if we had a vocabulary of, say 170,000 words, we'd find it difficult to compute our loss function for every step of training the model. &lt;/p&gt;
+&lt;p&gt;In this post, we will discuss the changes to Skip-Gram using negative sampling and update our Tensorflow word2vec implementation to use it.
+&lt;/p&gt;
+&lt;h2&gt;Problem Setup&lt;/h2&gt;
+&lt;p&gt;Let's use the same corpus of documents that we had in the &lt;a href="/ns"&gt;previous post&lt;/a&gt;: &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;corpus&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;document_1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;document_2&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The documents are just one sentence long:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;document1&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;the&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;cat&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;loves&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;fish&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="n"&gt;document2&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;the&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;person&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;hates&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;fish&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And we are still trying to learn the embeddings for the following words in our vocab:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;word_to_ix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="err"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;the&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;cat&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;loves&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;fish&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;person&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;hates&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="err"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The input to Skip-Gram is a word, and the output is the words that surround that word (called the context). So we would expect to see the following as a training example:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;cat&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;the&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;loves&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We convert these to indices:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And convert the output to a binary encoded vector:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;If we use negative sampling, we will convert this training example into two training examples like so:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;cat&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;the&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;cat&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;loves&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;So now the model takes as input a word, context pair &lt;span class="math"&gt;\((w, c)\)&lt;/span&gt; and attempts to predict whether or not this pair came from the training data (1 if it is, 0 if it is not). If we used this approach, the training data would be quite imbalanced (since it only has positive examples). So how do we get the negative examples? We sample them (hence, negative sampling)!&lt;/p&gt;
+&lt;p&gt;Which distribution do we sample them from? The &lt;a href="https://papers.nips.cc/ paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf"&gt;original paper&lt;/a&gt; recommends using the Unigram Model raised to the &lt;span class="math"&gt;\(3/4\)&lt;/span&gt; power. The rationale behind using &lt;span class="math"&gt;\(3/4\)&lt;/span&gt; this can be explained using the example from this &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;lecture&lt;/a&gt;:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;is: &lt;span class="math"&gt;\(0.9^{3/4}\)&lt;/span&gt; = 0.92
+Constitution: &lt;span class="math"&gt;\(0.09^{3/4}\)&lt;/span&gt; = 0.16
+bombastic: &lt;span class="math"&gt;\(0.01^{3/4}\)&lt;/span&gt; = 0.032&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;So the original probability from the Unigram Model for the word "is" is &lt;span class="math"&gt;\(0.9\)&lt;/span&gt;. After taking that probability to the &lt;span class="math"&gt;\(3/4\)&lt;/span&gt; power, its new probability is &lt;span class="math"&gt;\(0.92\)&lt;/span&gt;. Not much of a difference. But now look at the word "bombastic". Its probability increases from &lt;span class="math"&gt;\(0.01\)&lt;/span&gt; to &lt;span class="math"&gt;\(0.032\)&lt;/span&gt;, a 3x difference. So taking the probabilities of words to the &lt;span class="math"&gt;\(3/4\)&lt;/span&gt; power is a way to normalize probabilities, so that words that show up more infrequently have a higher probability of being sampled.&lt;/p&gt;
+&lt;h3&gt;What is the Unigram Model?&lt;/h3&gt;
+&lt;p&gt;The Unigram Model is a probability distribution for words that makes the assumption that the words in a sentence are completely independent from one another. So a sentence's probability of occurring is dependent on the probabilities of each of the words in that sentence. Under the unigram model, we'd expect this sentence to have a higher probability:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;"is and and she"&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Compared to this sentence:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;"The cantankerous curmudgeon is irascible."&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Why does the first sentence have a higher probability of occurring according to the Unigram Model? We want to calculate the probability of the sentence, which is the probability that the sequence of words will occur, &lt;span class="math"&gt;\(P(is, and, and she)\)&lt;/span&gt;. Remember that the Unigram Model assumes that words occurences in a sequence are independent of one another, so this probability becomes:&lt;/p&gt;
+&lt;div class="math"&gt;$$P(is, and, and, she) = P(is)P(and)P(and)P(she)$$&lt;/div&gt;
+&lt;p&gt;Comparing this to the probability of our second sentence:&lt;/p&gt;
+&lt;div class="math"&gt;$$P(the, cantankerous, curmudgeon, is, irascible) = P(the)P(cantankerous)P(curmudgeon)P(is)P(irascible)$$&lt;/div&gt;
+&lt;p&gt;And it becomes clear that the probability of the first sentence occurring is much higher, because we would expect the probabilities of the rarer words in the second sentence to be much lower than all of the words in the first sentence.&lt;/p&gt;
+&lt;p&gt;Let's implement the Unigram Model using python. We start by counting the frequency for each word and saving this in a &lt;code&gt;dict&lt;/code&gt;:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;collections&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;defaultdict&lt;/span&gt;
+
+&lt;span class="n"&gt;wordFreq&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;defaultdict&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;int&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;document&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;corpus&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;word&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;document&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;wordFreq&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;word&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The result is a frequency dict, which shows the number of times a word showed up in our corpus:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;wordFreq&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="err"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;the&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;cat&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;loves&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;fish&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;person&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;hates&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="err"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Next, let's convert these frequencies to probabilities. If for a given word &lt;span class="math"&gt;\(w_i\)&lt;/span&gt; the frequency that it shows up in the corpus is &lt;span class="math"&gt;\(f(w_i)\)&lt;/span&gt;, then the sample probability for &lt;span class="math"&gt;\(w_i\)&lt;/span&gt; for our distribution will be:&lt;/p&gt;
+&lt;div class="math"&gt;$$P(w_i) = \dfrac{f(w_i)}{\sum^n_{j=0}f(w_j)}$$&lt;/div&gt;
+&lt;p&gt;Taking the advice from the word2vec authors, we replace &lt;span class="math"&gt;\(f(w_i)\)&lt;/span&gt; with &lt;span class="math"&gt;\(f(w_i)^{3/4}\)&lt;/span&gt;:&lt;/p&gt;
+&lt;div class="math"&gt;$$P(w_i) = \dfrac{f(w_i)^{3/4}}{\sum^n_{j=0}f(w_j)^{3/4}}$$&lt;/div&gt;
+&lt;p&gt;Implementing this in python:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nv"&gt;totalWords&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;sum&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;[&lt;span class="nv"&gt;freq&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt; &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;freq&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;wordFreq&lt;/span&gt;.&lt;span class="nv"&gt;values&lt;/span&gt;&lt;span class="ss"&gt;()&lt;/span&gt;]&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="nv"&gt;wordProb&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; {&lt;span class="nv"&gt;word&lt;/span&gt;:&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;freq&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;totalWords&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt; &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;word&lt;/span&gt;, &lt;span class="nv"&gt;freq&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;wordFreq&lt;/span&gt;.&lt;span class="nv"&gt;items&lt;/span&gt;&lt;span class="ss"&gt;()&lt;/span&gt;}
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Great! Now we can use &lt;code&gt;np.random.choice&lt;/code&gt; to sample from this probability distribution, and we can use that to generate our negative word, context pairs to use to train our model.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;numpy&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;np&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;generate_negative_sample&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;wordProb&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+&lt;span class="sd"&gt;    This function takes as input a dict with keys as the &lt;/span&gt;
+&lt;span class="sd"&gt;    words in the vocab and values as the probabilities.&lt;/span&gt;
+&lt;span class="sd"&gt;    Probabilities must sum to 1.&lt;/span&gt;
+&lt;span class="sd"&gt;    &amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;    
+    &lt;span class="n"&gt;word&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;choice&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;list&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;wordProb&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;keys&lt;/span&gt;&lt;span class="p"&gt;()),&lt;/span&gt; 
+                     &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nb"&gt;list&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;wordProb&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;values&lt;/span&gt;&lt;span class="p"&gt;()))&lt;/span&gt; &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;_&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;word&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;
+
+&lt;span class="n"&gt;word&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;generate_negative_sample&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;wordProb&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;How many should we generate? Good question. &lt;code&gt;gensim&lt;/code&gt;, the most popular NLP library in Python, uses a rate of &lt;span class="math"&gt;\(0.75\)&lt;/span&gt; but that might not be the &lt;a href="https://github.com/RaRe-Technologies/gensim/issues/2090"&gt;best rate for all word2vec applications&lt;/a&gt;. Let's stick with 50% negative samples for this simple example.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nv"&gt;posTrainSet&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; []
+
+# &lt;span class="nv"&gt;add&lt;/span&gt; &lt;span class="nv"&gt;positive&lt;/span&gt; &lt;span class="nv"&gt;examples&lt;/span&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;document&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;corpus&lt;/span&gt;:
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;i&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;range&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;, &lt;span class="nv"&gt;len&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;document&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="nv"&gt;word&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;document&lt;/span&gt;[&lt;span class="nv"&gt;i&lt;/span&gt;]]
+        &lt;span class="nv"&gt;context_words&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; [&lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;document&lt;/span&gt;[&lt;span class="nv"&gt;i&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;]], &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;document&lt;/span&gt;[&lt;span class="nv"&gt;i&lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;]]]
+        &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;context&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;context_words&lt;/span&gt;:
+            &lt;span class="nv"&gt;posTrainSet&lt;/span&gt;.&lt;span class="nv"&gt;append&lt;/span&gt;&lt;span class="ss"&gt;((&lt;/span&gt;&lt;span class="nv"&gt;word&lt;/span&gt;, &lt;span class="nv"&gt;context&lt;/span&gt;&lt;span class="ss"&gt;))&lt;/span&gt;
+
+&lt;span class="nv"&gt;n_pos_examples&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;len&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;posTrainSet&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+# &lt;span class="nv"&gt;add&lt;/span&gt; &lt;span class="nv"&gt;the&lt;/span&gt; &lt;span class="nv"&gt;same&lt;/span&gt; &lt;span class="nv"&gt;number&lt;/span&gt; &lt;span class="nv"&gt;of&lt;/span&gt; &lt;span class="nv"&gt;negative&lt;/span&gt; &lt;span class="nv"&gt;examples&lt;/span&gt;
+&lt;span class="nv"&gt;n_neg_examples&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;
+&lt;span class="nv"&gt;negTrainSet&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; []
+
+&lt;span class="k"&gt;while&lt;/span&gt; &lt;span class="nv"&gt;n_neg_examples&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="nv"&gt;n_pos_examples&lt;/span&gt;:
+    &lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;word&lt;/span&gt;, &lt;span class="nv"&gt;context&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;generate_negative_sample&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;wordProb&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+    # &lt;span class="nv"&gt;convert&lt;/span&gt; &lt;span class="nv"&gt;to&lt;/span&gt; &lt;span class="nv"&gt;indicies&lt;/span&gt;
+    &lt;span class="nv"&gt;word&lt;/span&gt;, &lt;span class="nv"&gt;context&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;word&lt;/span&gt;], &lt;span class="nv"&gt;word_to_ix&lt;/span&gt;[&lt;span class="nv"&gt;context&lt;/span&gt;]
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;word&lt;/span&gt;, &lt;span class="nv"&gt;context&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt; &lt;span class="nv"&gt;not&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;posTrainSet&lt;/span&gt;:
+        &lt;span class="nv"&gt;negTrainSet&lt;/span&gt;.&lt;span class="nv"&gt;append&lt;/span&gt;&lt;span class="ss"&gt;((&lt;/span&gt;&lt;span class="nv"&gt;word&lt;/span&gt;, &lt;span class="nv"&gt;context&lt;/span&gt;&lt;span class="ss"&gt;))&lt;/span&gt;
+        &lt;span class="nv"&gt;n_neg_examples&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;
+
+&lt;span class="nv"&gt;X&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;np&lt;/span&gt;.&lt;span class="nv"&gt;concatenate&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;[&lt;span class="nv"&gt;np&lt;/span&gt;.&lt;span class="nv"&gt;array&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;posTrainSet&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;, &lt;span class="nv"&gt;np&lt;/span&gt;.&lt;span class="nv"&gt;array&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;negTrainSet&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;], &lt;span class="nv"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="nv"&gt;y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;np&lt;/span&gt;.&lt;span class="nv"&gt;concatenate&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;[[&lt;span class="mi"&gt;1&lt;/span&gt;]&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;n_pos_examples&lt;/span&gt;, [&lt;span class="mi"&gt;0&lt;/span&gt;]&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;n_neg_examples&lt;/span&gt;]&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Notice that when we generate negative examples, we check if that negative example is the same as a positive example. If it is, we discard it. That makes sense, since we don't want a word, context pair to be both a positive and negative example.&lt;/p&gt;
+&lt;p&gt;Now, let's initialize the embeddings. We'll change the &lt;code&gt;input_shape&lt;/code&gt; parameter from &lt;code&gt;1&lt;/code&gt; to &lt;code&gt;2&lt;/code&gt;, since we are taking a word and context as inputs into the model instead of just the word.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;N_WORDS&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;word_to_ix&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;keys&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+&lt;span class="n"&gt;embedding_layer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Embedding&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;N_WORDS&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;EMBEDDING_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; 
+                                   &lt;span class="n"&gt;embeddings_initializer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;RandomNormal&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                                   &lt;span class="n"&gt;input_shape&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Next, let's define the model, compile it, and fit it. The only change we make is that we want the output to be a probability that the word, context pair came from the train dataset, so we change the output dimensions to be 1 and the activation to be sigmoid.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;tensorflow&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;keras&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;tensorflow.keras&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;layers&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;keras.models&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Model&lt;/span&gt;
+
+&lt;span class="n"&gt;model&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;keras&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Sequential&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;
+  &lt;span class="n"&gt;embedding_layer&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+  &lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;GlobalAveragePooling1D&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
+  &lt;span class="n"&gt;layers&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Dense&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;activation&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;sigmoid&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+&lt;span class="p"&gt;])&lt;/span&gt;
+
+&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;compile&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;optimizer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;adam&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+              &lt;span class="n"&gt;loss&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;binary_crossentropy&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+              &lt;span class="n"&gt;metrics&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;accuracy&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+
+&lt;span class="n"&gt;history&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fit&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;X&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;X&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;shape&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And that's a basic implementation of negative sampling. We typically don't want to do negative sampling manually, so luckily gensim and tensorflow do it automatically (however at the time of this post we are &lt;a href="https://github.com/tensorflow/tensorflow/issues/34131"&gt;still waiting&lt;/a&gt; for an implementation in the tensorflow keras api).&lt;/p&gt;
+&lt;h3&gt;Resources&lt;/h3&gt;
+&lt;p&gt;1) &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;Notes from Stanford NLP course&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;2) &lt;a href="https://arxiv.org/pdf/1301.3781.pdf"&gt;word2vec paper&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;3) &lt;a href="http://mccormickml.com/2017/01/11/word2vec-tutorial-part-2-negative-sampling/"&gt;word2vec Tutorial Part 2 - Negative Sampling&lt;/a&gt;&lt;/p&gt;
+&lt;script type="text/javascript"&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width &lt; 768) ? "left" : align;
+        indent = (screen.width &lt; 768) ? "0em" : indent;
+        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
+
+    var configscript = document.createElement('script');
+    configscript.type = 'text/x-mathjax-config';
+    configscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'none' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        availableFonts: ['STIX', 'TeX']," +
+        "        preferredFont: 'STIX'," +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'black ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(configscript);
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+&lt;/script&gt;</content><category term="posts"></category><category term="machine learning"></category><category term="natural language processing"></category><category term="word2vec"></category></entry><entry><title>word2vec - CBOW and Skip-Gram</title><link href="http://www.jasonosajima.com/word2vec.html" rel="alternate"></link><published>2019-12-09T00:00:00-08:00</published><updated>2019-12-09T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-12-09:/word2vec.html</id><summary type="html">
 &lt;p&gt;word2vec is an iterative model that can be used to create embeddings of words (or embeddings of &lt;a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e"&gt;pretty much anything&lt;/a&gt;). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.
-&lt;/p&gt;</summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
+&lt;/p&gt;</summary><content type="html">&lt;p&gt;&lt;em&gt;This is part one in a two-part series on the word2vec. Part one is about CBOW and Skip-Gram. Part two is about negative sampling and can be found &lt;a href="/ns"&gt;here&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;Introduction&lt;/h2&gt;
 
 
 &lt;p&gt;word2vec is an iterative model that can be used to create embeddings of words (or embeddings of &lt;a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e"&gt;pretty much anything&lt;/a&gt;). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.
@@ -22,7 +260,7 @@
 
 
 &lt;p&gt;So the goal of using word2vec is to learn embeddings for all of the words in our corpus. In this case, the words in our corpus are:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="err"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;the&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;cat&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;loves&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;fish&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;person&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;hates&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="err"&gt;}&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;word_to_ix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="err"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;the&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;cat&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;loves&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;fish&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;person&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;hates&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="err"&gt;}&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
 
 
@@ -167,7 +405,7 @@
 
 
 &lt;h3&gt;Conclusion&lt;/h3&gt;
-&lt;p&gt;So we now know how to implement CBOW and SkipGram word2vec in tensorflow. Hooray! Don't get too excited though: these implementations are not very practical. The reason is because the number of words will not typically be 6, like in our example. Let's imagine that we implemented word2vec using all of wikipedia. Wikipedia has 2.9 billion words. We can't have a 2.9 billion one-hot or multi-hot encoded output. Luckily, we have a way to get around this by using negative sampling, which was introduced in the &lt;a href="https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf"&gt;original word2vec paper&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;So we now know how to implement CBOW and SkipGram word2vec in tensorflow. Hooray! Don't get too excited though: these implementations are not very practical. The reason is because the number of words will not typically be 6, like in our example. Let's imagine that we implemented word2vec using all of wikipedia. There are around 170,000 words currently used in the English language. We can't have a 170,000 one-hot or multi-hot encoded output. Luckily, we have a way to get around this by using negative sampling], which was introduced in the &lt;a href="https://papers.nips.cc/ paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf"&gt;original word2vec paper&lt;/a&gt;and will be discussed in &lt;a href="/ns"&gt;part two&lt;/a&gt;.&lt;/p&gt;
 &lt;h3&gt;Resources&lt;/h3&gt;
 &lt;p&gt;1) &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;Notes from Stanford NLP course&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;2) &lt;a href="https://arxiv.org/pdf/1301.3781.pdf"&gt;word2vec paper&lt;/a&gt;&lt;/p&gt;
@@ -233,7 +471,7 @@
     (document.body || document.getElementsByTagName('head')[0]).appendChild(configscript);
     (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
 }
-&lt;/script&gt;</content><category term="posts"></category><category term="machine learning"></category><category term="natural language processing"></category></entry><entry><title>Singular Value Decomposition</title><link href="http://www.jasonosajima.com/svd.html" rel="alternate"></link><published>2019-11-22T00:00:00-08:00</published><updated>2019-11-22T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-11-22:/svd.html</id><summary type="html">
+&lt;/script&gt;</content><category term="posts"></category><category term="machine learning"></category><category term="natural language processing"></category><category term="word2vec"></category></entry><entry><title>Singular Value Decomposition</title><link href="http://www.jasonosajima.com/svd.html" rel="alternate"></link><published>2019-11-22T00:00:00-08:00</published><updated>2019-11-22T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-11-22:/svd.html</id><summary type="html">
 &lt;p&gt;Some quick notes about Singular Value Decomposition (SVD) to develop an intuition that will help solve problems related to collaborative filtering, natural language processing (NLP), dimensionality reduction, image compression, denoising data etc.&lt;/p&gt;
 </summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
 

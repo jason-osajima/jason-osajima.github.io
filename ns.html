@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="author" content="Jason Osajima">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <title>word2vec - Negative Sampling | Jason {osa-jima}</title>
+
+	<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+	<link rel="icon" href="/favicon.ico" type="image/x-icon">
+        <link rel="alternate" type="application/atom+xml" title="Jason {osa-jima} blog atom feed" href="/feeds/all.atom.xml" />
+        <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700' rel='stylesheet' type='text/css'>
+
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" type="text/css" href="/theme/css/icons.css"/>
+        <style>.highlight .hll { background-color: #ffffcc }
+.highlight .c { color: #60a0b0; font-style: italic } /* Comment */
+.highlight .err { border: 1px solid #FF0000 } /* Error */
+.highlight .k { color: #007020; font-weight: bold } /* Keyword */
+.highlight .o { color: #666666 } /* Operator */
+.highlight .cm { color: #60a0b0; font-style: italic } /* Comment.Multiline */
+.highlight .cp { color: #007020 } /* Comment.Preproc */
+.highlight .c1 { color: #60a0b0; font-style: italic } /* Comment.Single */
+.highlight .cs { color: #60a0b0; background-color: #fff0f0 } /* Comment.Special */
+.highlight .gd { color: #A00000 } /* Generic.Deleted */
+.highlight .ge { font-style: italic } /* Generic.Emph */
+.highlight .gr { color: #FF0000 } /* Generic.Error */
+.highlight .gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.highlight .gi { color: #00A000 } /* Generic.Inserted */
+.highlight .go { color: #808080 } /* Generic.Output */
+.highlight .gp { color: #c65d09; font-weight: bold } /* Generic.Prompt */
+.highlight .gs { font-weight: bold } /* Generic.Strong */
+.highlight .gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.highlight .gt { color: #0040D0 } /* Generic.Traceback */
+.highlight .kc { color: #007020; font-weight: bold } /* Keyword.Constant */
+.highlight .kd { color: #007020; font-weight: bold } /* Keyword.Declaration */
+.highlight .kn { color: #007020; font-weight: bold } /* Keyword.Namespace */
+.highlight .kp { color: #007020 } /* Keyword.Pseudo */
+.highlight .kr { color: #007020; font-weight: bold } /* Keyword.Reserved */
+.highlight .kt { color: #902000 } /* Keyword.Type */
+.highlight .m { color: #40a070 } /* Literal.Number */
+.highlight .s { color: #4070a0 } /* Literal.String */
+.highlight .na { color: #4070a0 } /* Name.Attribute */
+.highlight .nb { color: #007020 } /* Name.Builtin */
+.highlight .nc { color: #0e84b5; font-weight: bold } /* Name.Class */
+.highlight .no { color: #60add5 } /* Name.Constant */
+.highlight .nd { color: #555555; font-weight: bold } /* Name.Decorator */
+.highlight .ni { color: #d55537; font-weight: bold } /* Name.Entity */
+.highlight .ne { color: #007020 } /* Name.Exception */
+.highlight .nf { color: #06287e } /* Name.Function */
+.highlight .nl { color: #002070; font-weight: bold } /* Name.Label */
+.highlight .nn { color: #0e84b5; font-weight: bold } /* Name.Namespace */
+.highlight .nt { color: #062873; font-weight: bold } /* Name.Tag */
+.highlight .nv { color: #bb60d5 } /* Name.Variable */
+.highlight .ow { color: #007020; font-weight: bold } /* Operator.Word */
+.highlight .w { color: #bbbbbb } /* Text.Whitespace */
+.highlight .mf { color: #40a070 } /* Literal.Number.Float */
+.highlight .mh { color: #40a070 } /* Literal.Number.Hex */
+.highlight .mi { color: #40a070 } /* Literal.Number.Integer */
+.highlight .mo { color: #40a070 } /* Literal.Number.Oct */
+.highlight .sb { color: #4070a0 } /* Literal.String.Backtick */
+.highlight .sc { color: #4070a0 } /* Literal.String.Char */
+.highlight .sd { color: #4070a0; font-style: italic } /* Literal.String.Doc */
+.highlight .s2 { color: #4070a0 } /* Literal.String.Double */
+.highlight .se { color: #4070a0; font-weight: bold } /* Literal.String.Escape */
+.highlight .sh { color: #4070a0 } /* Literal.String.Heredoc */
+.highlight .si { color: #70a0d0; font-style: italic } /* Literal.String.Interpol */
+.highlight .sx { color: #c65d09 } /* Literal.String.Other */
+.highlight .sr { color: #235388 } /* Literal.String.Regex */
+.highlight .s1 { color: #4070a0 } /* Literal.String.Single */
+.highlight .ss { color: #517918 } /* Literal.String.Symbol */
+.highlight .bp { color: #007020 } /* Name.Builtin.Pseudo */
+.highlight .vc { color: #bb60d5 } /* Name.Variable.Class */
+.highlight .vg { color: #bb60d5 } /* Name.Variable.Global */
+.highlight .vi { color: #bb60d5 } /* Name.Variable.Instance */
+.highlight .il { color: #40a070 } /* Literal.Number.Integer.Long */</style>
+        <style>body {
+  margin: 0;
+  padding: 0;
+  font: 15px 'Source Sans Pro', sans-serif;
+  line-height: 1.6em;
+  color: #222;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: #007EE5;
+  text-decoration: none;
+}
+a:hover {
+  color: #007EE5;
+  text-decoration: none;
+}
+header.main-header {
+  background: none repeat scroll 0% 0% #205F29;
+  margin-bottom: 0px;
+}
+header.main-header a {
+  color: #fff;
+}
+header.main-header .container {
+  max-width: 1000px;
+}
+header.main-header .container nav a:hover {
+  background-color: #5C881C;
+}
+article {
+  margin: 0;
+}
+article header.about {
+  margin-bottom: 0px;
+  padding-bottom: 0px;
+}
+article header {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+}
+article header h1 {
+  margin-bottom: 2px;
+  font-weight: 700;
+  color: #000;
+}
+article header time {
+  color: #9E9E9E;
+  font-size: 0.85em;
+  float: right;
+}
+article header time.left {
+  color: #9E9E9E;
+  font-size: 0.85em;
+  float: left;
+}
+article div.social-links ul {
+  padding: 0px;
+}
+article div.social-links li {
+  display: inline;
+  font-size: 20px;
+}
+article div.social-links li a {
+  color: #000;
+  padding: 10px;
+}
+article div.social-links li a:hover {
+  color: #666;
+  text-decoration: none;
+}
+article p {
+  font-size: 16px;
+  margin-bottom: 20px;
+  line-height: 1.6em;
+}
+article p.note {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 0.533em 0.733em;
+}
+article p.update {
+  background-color: #FEEFB3;
+  border: 1px solid #e6e68a;
+  padding: 0.533em 0.733em;
+}
+article p.alert {
+  background-color: #ffe2e2;
+  border: 1px solid #ffb2b2;
+  padding: 0.533em 0.733em;
+}
+article ul,
+article ol {
+  margin-top: 0px;
+  margin-bottom: 25px;
+}
+article li {
+  font-size: 16px;
+  line-height: 1.6em;
+}
+article a:hover {
+  text-decoration: underline;
+}
+article blockquote {
+  border-left: 2px solid #c7c7cc;
+  color: #666;
+  margin: 30px 0;
+  padding: 0 0 0 25px;
+}
+article img {
+  max-width: 100%;
+}
+article code {
+  color: #333;
+  background-color: #EEE;
+  border-radius: 0;
+  font-size: 13px;
+}
+article .meta {
+  font-size: 11px;
+}
+article .meta a:hover {
+  text-decoration: none;
+}
+article .meta div {
+  margin-bottom: 20px;
+  display: block;
+}
+article .meta a.tag {
+  margin: 0 10px 10px 0;
+  padding: 1px 12px;
+  display: inline-block;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.05);
+}
+article .meta a.tag:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+article .meta a.read_more,
+article .meta a.comments_btn {
+  font-size: 14px;
+  font-weight: 800;
+  padding: 10px 20px;
+  color: #205F29;
+  background: #FFF;
+  border: 1px solid #205F29;
+}
+article .meta a.read_more:hover,
+article .meta a.comments_btn:hover {
+  color: #FFF;
+  background: #5C881C;
+}
+.index {
+  max-width: 700px;
+}
+.index article header h2 {
+  font-size: 36px;
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+.index article header h2 a {
+  color: #000;
+}
+.index article header h2 a:hover {
+  color: #007EE5;
+  text-decoration: none;
+}
+.index .separator {
+  padding: 40px 0 0 0;
+  margin: 0 0 40px 0;
+  height: 10px;
+  border-bottom: solid 1px #CCC;
+}
+.index .pagination {
+  display: block;
+  margin-bottom: 100px;
+}
+.index .pagination .left {
+  text-align: right;
+}
+.index .pagination .right {
+  text-align: left;
+}
+.index .pagination a {
+  display: inline-block;
+  border: 2px solid #5C881C;
+  margin: 0 5px;
+  padding: 8px 20px;
+  font-weight: bold;
+  color: #5C881C;
+}
+.index .pagination a:hover {
+  color: #FFF;
+  background: #5C881C;
+}
+.post {
+  max-width: 700px;
+}
+.post h2:before {
+  content: "# ";
+  font-weight: bold;
+  color: #DDD;
+}
+.post h3:before {
+  content: "## ";
+  font-weight: bold;
+  color: #DDD;
+}
+.post h4:before {
+  content: "### ";
+  font-weight: bold;
+  color: #DDD;
+}
+.post article .meta {
+  margin: 50px 0 100px;
+}
+.list {
+  max-width: 700px;
+}
+.list ul.double-list {
+  margin: 0 auto 60px;
+  padding: 0;
+  list-style-type: none;
+}
+.list ul.double-list li {
+  padding: 5px 0;
+}
+.list ul.double-list li h2 {
+  font-size: 1em;
+  display: inline;
+  font-weight: normal;
+}
+.list ul.double-list li span {
+  font-family: sans-serif;
+  text-transform: uppercase;
+  text-align: right;
+  float: right;
+  padding-top: 3px;
+  font-size: 12px;
+  color: #999;
+}
+.full-width-content {
+  padding-top: 10px;
+  padding-left: 0px;
+  padding-right: 0px;
+  margin-left: -20px;
+  margin-right: -20px;
+}
+.col-xs-1,
+.col-sm-1,
+.col-md-1,
+.col-lg-1,
+.col-xs-2,
+.col-sm-2,
+.col-md-2,
+.col-lg-2,
+.col-xs-3,
+.col-sm-3,
+.col-md-3,
+.col-lg-3,
+.col-xs-4,
+.col-sm-4,
+.col-md-4,
+.col-lg-4,
+.col-xs-5,
+.col-sm-5,
+.col-md-5,
+.col-lg-5,
+.col-xs-6,
+.col-sm-6,
+.col-md-6,
+.col-lg-6,
+.col-xs-7,
+.col-sm-7,
+.col-md-7,
+.col-lg-7,
+.col-xs-8,
+.col-sm-8,
+.col-md-8,
+.col-lg-8,
+.col-xs-9,
+.col-sm-9,
+.col-md-9,
+.col-lg-9,
+.col-xs-10,
+.col-sm-10,
+.col-md-10,
+.col-lg-10,
+.col-xs-11,
+.col-sm-11,
+.col-md-11,
+.col-lg-11,
+.col-xs-12,
+.col-sm-12,
+.col-md-12,
+.col-lg-12 {
+  padding-right: 0px;
+  padding-left: 0px;
+}</style>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+
+    </head>
+
+    <body>
+        <header class="navbar navbar-inverse bs-docs-nav">
+            <div class="container-fluid">
+                <div class="navbar-header">
+		  <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#theNavbar">
+		    <span class="icon-bar"></span>
+		    <span class="icon-bar"></span>
+		    <span class="icon-bar"></span> 
+		  </button>
+                  <a class="navbar-brand" href="/" title="Home" class="title">Jason {osa-jima}</a>
+                </div>
+                <nav class="collapse navbar-collapse bs-navbar-collapse" role="navigation" id="theNavbar">
+		    <ul class="nav navbar-nav navbar-right">
+                            <li><a href="/pages/about.html" title="About">About</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+
+        <div id="wrap">
+<div class="container post">
+    <article>
+        <header>
+            <h1>word2vec - Negative Sampling</h1>
+            <time datetime="article.date.isoformat()" pubdate>Tue 10 December 2019</time>
+        </header>
+
+        <div class="article_content">
+            <p><em>This is part two in a two-part series on the word2vec. Part one is about CBOW and Skip-Gram and can be found <a href="/word2vec">here</a>. Part two is about negative sampling.</em></p>
+<h2>Introduction</h2>
+
+
+<p>In the <a href="https://papers.nips.cc/ paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">original word2vec paper</a>, the authors introduced Negative Sampling, which is a technique to overcome the computational limitations of vanilla Skip-Gram. Recall that in the <a href="/ns">previous post</a>, we had a vocabulary of 6 words, so the output of Skip-Gram was a vector of 6 binary elements. However, if we had a vocabulary of, say 170,000 words, we'd find it difficult to compute our loss function for every step of training the model. </p>
+<p>In this post, we will discuss the changes to Skip-Gram using negative sampling and update our Tensorflow word2vec implementation to use it.
+</p>
+<h2>Problem Setup</h2>
+<p>Let's use the same corpus of documents that we had in the <a href="/ns">previous post</a>: </p>
+<div class="highlight"><pre><span></span><span class="n">corpus</span> <span class="o">=</span> <span class="p">[</span><span class="n">document_1</span><span class="p">,</span> <span class="n">document_2</span><span class="p">]</span>
+</pre></div>
+
+
+<p>The documents are just one sentence long:</p>
+<div class="highlight"><pre><span></span><span class="n">document1</span> <span class="o">=</span> <span class="p">[</span><span class="ss">&quot;the&quot;</span><span class="p">,</span> <span class="ss">&quot;cat&quot;</span><span class="p">,</span> <span class="ss">&quot;loves&quot;</span><span class="p">,</span> <span class="ss">&quot;fish&quot;</span><span class="p">]</span>
+<span class="n">document2</span> <span class="o">=</span> <span class="p">[</span><span class="ss">&quot;the&quot;</span><span class="p">,</span> <span class="ss">&quot;person&quot;</span><span class="p">,</span> <span class="ss">&quot;hates&quot;</span><span class="p">,</span> <span class="ss">&quot;fish&quot;</span><span class="p">]</span>
+</pre></div>
+
+
+<p>And we are still trying to learn the embeddings for the following words in our vocab:</p>
+<div class="highlight"><pre><span></span><span class="n">word_to_ix</span> <span class="o">=</span> <span class="err">{</span><span class="s1">&#39;the&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;cat&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;loves&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;fish&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;hates&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="err">}</span>
+</pre></div>
+
+
+<p>The input to Skip-Gram is a word, and the output is the words that surround that word (called the context). So we would expect to see the following as a training example:</p>
+<div class="highlight"><pre><span></span><span class="ss">&quot;cat&quot;</span><span class="p">,</span> <span class="p">[</span><span class="ss">&quot;the&quot;</span><span class="p">,</span> <span class="ss">&quot;loves&quot;</span><span class="p">]</span>
+</pre></div>
+
+
+<p>We convert these to indices:</p>
+<div class="highlight"><pre><span></span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+</pre></div>
+
+
+<p>And convert the output to a binary encoded vector:</p>
+<div class="highlight"><pre><span></span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+
+
+<p>If we use negative sampling, we will convert this training example into two training examples like so:</p>
+<div class="highlight"><pre><span></span><span class="p">(</span><span class="ss">&quot;cat&quot;</span><span class="p">,</span> <span class="ss">&quot;the&quot;</span><span class="p">),</span> <span class="mi">1</span>
+<span class="p">(</span><span class="ss">&quot;cat&quot;</span><span class="p">,</span> <span class="ss">&quot;loves&quot;</span><span class="p">),</span> <span class="mi">1</span>
+</pre></div>
+
+
+<p>So now the model takes as input a word, context pair <span class="math">\((w, c)\)</span> and attempts to predict whether or not this pair came from the training data (1 if it is, 0 if it is not). If we used this approach, the training data would be quite imbalanced (since it only has positive examples). So how do we get the negative examples? We sample them (hence, negative sampling)!</p>
+<p>Which distribution do we sample them from? The <a href="https://papers.nips.cc/ paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">original paper</a> recommends using the Unigram Model raised to the <span class="math">\(3/4\)</span> power. The rationale behind using <span class="math">\(3/4\)</span> this can be explained using the example from this <a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf">lecture</a>:</p>
+<blockquote>
+<p>is: <span class="math">\(0.9^{3/4}\)</span> = 0.92
+Constitution: <span class="math">\(0.09^{3/4}\)</span> = 0.16
+bombastic: <span class="math">\(0.01^{3/4}\)</span> = 0.032</p>
+</blockquote>
+<p>So the original probability from the Unigram Model for the word "is" is <span class="math">\(0.9\)</span>. After taking that probability to the <span class="math">\(3/4\)</span> power, its new probability is <span class="math">\(0.92\)</span>. Not much of a difference. But now look at the word "bombastic". Its probability increases from <span class="math">\(0.01\)</span> to <span class="math">\(0.032\)</span>, a 3x difference. So taking the probabilities of words to the <span class="math">\(3/4\)</span> power is a way to normalize probabilities, so that words that show up more infrequently have a higher probability of being sampled.</p>
+<h3>What is the Unigram Model?</h3>
+<p>The Unigram Model is a probability distribution for words that makes the assumption that the words in a sentence are completely independent from one another. So a sentence's probability of occurring is dependent on the probabilities of each of the words in that sentence. Under the unigram model, we'd expect this sentence to have a higher probability:</p>
+<blockquote>
+<p>"is and and she"</p>
+</blockquote>
+<p>Compared to this sentence:</p>
+<blockquote>
+<p>"The cantankerous curmudgeon is irascible."</p>
+</blockquote>
+<p>Why does the first sentence have a higher probability of occurring according to the Unigram Model? We want to calculate the probability of the sentence, which is the probability that the sequence of words will occur, <span class="math">\(P(is, and, and she)\)</span>. Remember that the Unigram Model assumes that words occurences in a sequence are independent of one another, so this probability becomes:</p>
+<div class="math">$$P(is, and, and, she) = P(is)P(and)P(and)P(she)$$</div>
+<p>Comparing this to the probability of our second sentence:</p>
+<div class="math">$$P(the, cantankerous, curmudgeon, is, irascible) = P(the)P(cantankerous)P(curmudgeon)P(is)P(irascible)$$</div>
+<p>And it becomes clear that the probability of the first sentence occurring is much higher, because we would expect the probabilities of the rarer words in the second sentence to be much lower than all of the words in the first sentence.</p>
+<p>Let's implement the Unigram Model using python. We start by counting the frequency for each word and saving this in a <code>dict</code>:</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="n">wordFreq</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">document</span> <span class="ow">in</span> <span class="n">corpus</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">document</span><span class="p">:</span>
+        <span class="n">wordFreq</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+
+
+<p>The result is a frequency dict, which shows the number of times a word showed up in our corpus:</p>
+<div class="highlight"><pre><span></span><span class="n">wordFreq</span> <span class="o">=</span> <span class="err">{</span><span class="s1">&#39;the&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;cat&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;loves&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;fish&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;hates&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="err">}</span>
+</pre></div>
+
+
+<p>Next, let's convert these frequencies to probabilities. If for a given word <span class="math">\(w_i\)</span> the frequency that it shows up in the corpus is <span class="math">\(f(w_i)\)</span>, then the sample probability for <span class="math">\(w_i\)</span> for our distribution will be:</p>
+<div class="math">$$P(w_i) = \dfrac{f(w_i)}{\sum^n_{j=0}f(w_j)}$$</div>
+<p>Taking the advice from the word2vec authors, we replace <span class="math">\(f(w_i)\)</span> with <span class="math">\(f(w_i)^{3/4}\)</span>:</p>
+<div class="math">$$P(w_i) = \dfrac{f(w_i)^{3/4}}{\sum^n_{j=0}f(w_j)^{3/4}}$$</div>
+<p>Implementing this in python:</p>
+<div class="highlight"><pre><span></span><span class="nv">totalWords</span> <span class="o">=</span> <span class="nv">sum</span><span class="ss">(</span>[<span class="nv">freq</span><span class="o">**</span><span class="ss">(</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="ss">)</span> <span class="k">for</span> <span class="nv">freq</span> <span class="nv">in</span> <span class="nv">wordFreq</span>.<span class="nv">values</span><span class="ss">()</span>]<span class="ss">)</span>
+<span class="nv">wordProb</span> <span class="o">=</span> {<span class="nv">word</span>:<span class="ss">(</span><span class="nv">freq</span><span class="o">/</span><span class="nv">totalWords</span><span class="ss">)</span><span class="o">**</span><span class="ss">(</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="ss">)</span> <span class="k">for</span> <span class="nv">word</span>, <span class="nv">freq</span> <span class="nv">in</span> <span class="nv">wordFreq</span>.<span class="nv">items</span><span class="ss">()</span>}
+</pre></div>
+
+
+<p>Great! Now we can use <code>np.random.choice</code> to sample from this probability distribution, and we can use that to generate our negative word, context pairs to use to train our model.</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="k">def</span> <span class="nf">generate_negative_sample</span><span class="p">(</span><span class="n">wordProb</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function takes as input a dict with keys as the </span>
+<span class="sd">    words in the vocab and values as the probabilities.</span>
+<span class="sd">    Probabilities must sum to 1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="n">word</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">wordProb</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> 
+                     <span class="n">p</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">wordProb</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">word</span><span class="p">,</span> <span class="n">context</span>
+
+<span class="n">word</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">generate_negative_sample</span><span class="p">(</span><span class="n">wordProb</span><span class="p">)</span>
+</pre></div>
+
+
+<p>How many should we generate? Good question. <code>gensim</code>, the most popular NLP library in Python, uses a rate of <span class="math">\(0.75\)</span> but that might not be the <a href="https://github.com/RaRe-Technologies/gensim/issues/2090">best rate for all word2vec applications</a>. Let's stick with 50% negative samples for this simple example.</p>
+<div class="highlight"><pre><span></span><span class="nv">posTrainSet</span> <span class="o">=</span> []
+
+# <span class="nv">add</span> <span class="nv">positive</span> <span class="nv">examples</span>
+<span class="k">for</span> <span class="nv">document</span> <span class="nv">in</span> <span class="nv">corpus</span>:
+    <span class="k">for</span> <span class="nv">i</span> <span class="nv">in</span> <span class="nv">range</span><span class="ss">(</span><span class="mi">1</span>, <span class="nv">len</span><span class="ss">(</span><span class="nv">document</span><span class="ss">)</span><span class="o">-</span><span class="mi">1</span><span class="ss">)</span>:
+        <span class="nv">word</span> <span class="o">=</span> <span class="nv">word_to_ix</span>[<span class="nv">document</span>[<span class="nv">i</span>]]
+        <span class="nv">context_words</span> <span class="o">=</span> [<span class="nv">word_to_ix</span>[<span class="nv">document</span>[<span class="nv">i</span><span class="o">-</span><span class="mi">1</span>]], <span class="nv">word_to_ix</span>[<span class="nv">document</span>[<span class="nv">i</span><span class="o">+</span><span class="mi">1</span>]]]
+        <span class="k">for</span> <span class="nv">context</span> <span class="nv">in</span> <span class="nv">context_words</span>:
+            <span class="nv">posTrainSet</span>.<span class="nv">append</span><span class="ss">((</span><span class="nv">word</span>, <span class="nv">context</span><span class="ss">))</span>
+
+<span class="nv">n_pos_examples</span> <span class="o">=</span> <span class="nv">len</span><span class="ss">(</span><span class="nv">posTrainSet</span><span class="ss">)</span>
+
+# <span class="nv">add</span> <span class="nv">the</span> <span class="nv">same</span> <span class="nv">number</span> <span class="nv">of</span> <span class="nv">negative</span> <span class="nv">examples</span>
+<span class="nv">n_neg_examples</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="nv">negTrainSet</span> <span class="o">=</span> []
+
+<span class="k">while</span> <span class="nv">n_neg_examples</span> <span class="o">&lt;</span> <span class="nv">n_pos_examples</span>:
+    <span class="ss">(</span><span class="nv">word</span>, <span class="nv">context</span><span class="ss">)</span> <span class="o">=</span> <span class="nv">generate_negative_sample</span><span class="ss">(</span><span class="nv">wordProb</span><span class="ss">)</span>
+    # <span class="nv">convert</span> <span class="nv">to</span> <span class="nv">indicies</span>
+    <span class="nv">word</span>, <span class="nv">context</span> <span class="o">=</span> <span class="nv">word_to_ix</span>[<span class="nv">word</span>], <span class="nv">word_to_ix</span>[<span class="nv">context</span>]
+    <span class="k">if</span> <span class="ss">(</span><span class="nv">word</span>, <span class="nv">context</span><span class="ss">)</span> <span class="nv">not</span> <span class="nv">in</span> <span class="nv">posTrainSet</span>:
+        <span class="nv">negTrainSet</span>.<span class="nv">append</span><span class="ss">((</span><span class="nv">word</span>, <span class="nv">context</span><span class="ss">))</span>
+        <span class="nv">n_neg_examples</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="nv">X</span> <span class="o">=</span> <span class="nv">np</span>.<span class="nv">concatenate</span><span class="ss">(</span>[<span class="nv">np</span>.<span class="nv">array</span><span class="ss">(</span><span class="nv">posTrainSet</span><span class="ss">)</span>, <span class="nv">np</span>.<span class="nv">array</span><span class="ss">(</span><span class="nv">negTrainSet</span><span class="ss">)</span>], <span class="nv">axis</span><span class="o">=</span><span class="mi">0</span><span class="ss">)</span>
+<span class="nv">y</span> <span class="o">=</span> <span class="nv">np</span>.<span class="nv">concatenate</span><span class="ss">(</span>[[<span class="mi">1</span>]<span class="o">*</span><span class="nv">n_pos_examples</span>, [<span class="mi">0</span>]<span class="o">*</span><span class="nv">n_neg_examples</span>]<span class="ss">)</span>
+</pre></div>
+
+
+<p>Notice that when we generate negative examples, we check if that negative example is the same as a positive example. If it is, we discard it. That makes sense, since we don't want a word, context pair to be both a positive and negative example.</p>
+<p>Now, let's initialize the embeddings. We'll change the <code>input_shape</code> parameter from <code>1</code> to <code>2</code>, since we are taking a word and context as inputs into the model instead of just the word.</p>
+<div class="highlight"><pre><span></span><span class="n">N_WORDS</span> <span class="o">=</span> <span class="n">len</span><span class="p">(</span><span class="n">word_to_ix</span><span class="p">.</span><span class="n">keys</span><span class="p">())</span>
+<span class="n">embedding_layer</span> <span class="o">=</span> <span class="n">layers</span><span class="p">.</span><span class="n">Embedding</span><span class="p">(</span><span class="n">N_WORDS</span><span class="p">,</span> <span class="n">EMBEDDING_DIM</span><span class="p">,</span> 
+                                   <span class="n">embeddings_initializer</span><span class="o">=</span><span class="ss">&quot;RandomNormal&quot;</span><span class="p">,</span>
+                                   <span class="n">input_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,))</span>
+</pre></div>
+
+
+<p>Next, let's define the model, compile it, and fit it. The only change we make is that we want the output to be a probability that the word, context pair came from the train dataset, so we change the output dimensions to be 1 and the activation to be sigmoid.</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">tensorflow</span> <span class="kn">import</span> <span class="n">keras</span>
+<span class="kn">from</span> <span class="nn">tensorflow.keras</span> <span class="kn">import</span> <span class="n">layers</span>
+<span class="kn">from</span> <span class="nn">keras.models</span> <span class="kn">import</span> <span class="n">Model</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Sequential</span><span class="p">([</span>
+  <span class="n">embedding_layer</span><span class="p">,</span>
+  <span class="n">layers</span><span class="o">.</span><span class="n">GlobalAveragePooling1D</span><span class="p">(),</span>
+  <span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;sigmoid&#39;</span><span class="p">),</span>
+<span class="p">])</span>
+
+<span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="s1">&#39;adam&#39;</span><span class="p">,</span>
+              <span class="n">loss</span><span class="o">=</span><span class="s1">&#39;binary_crossentropy&#39;</span><span class="p">,</span>
+              <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;accuracy&#39;</span><span class="p">])</span>
+
+<span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">y</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+
+
+<p>And that's a basic implementation of negative sampling. We typically don't want to do negative sampling manually, so luckily gensim and tensorflow do it automatically (however at the time of this post we are <a href="https://github.com/tensorflow/tensorflow/issues/34131">still waiting</a> for an implementation in the tensorflow keras api).</p>
+<h3>Resources</h3>
+<p>1) <a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf">Notes from Stanford NLP course</a></p>
+<p>2) <a href="https://arxiv.org/pdf/1301.3781.pdf">word2vec paper</a></p>
+<p>3) <a href="http://mccormickml.com/2017/01/11/word2vec-tutorial-part-2-negative-sampling/">word2vec Tutorial Part 2 - Negative Sampling</a></p>
+<script type="text/javascript">if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
+
+    var configscript = document.createElement('script');
+    configscript.type = 'text/x-mathjax-config';
+    configscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'none' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        availableFonts: ['STIX', 'TeX']," +
+        "        preferredFont: 'STIX'," +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'black ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(configscript);
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
+        </div>
+
+        <div class="meta">
+            <div>
+                    <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
+                    <a href="http://www.jasonosajima.com/tag/natural-language-processing.html" class="tag">natural language processing</a>
+                    <a href="http://www.jasonosajima.com/tag/word2vec.html" class="tag">word2vec</a>
+            </div>
+        </div>
+    </article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript></div>
+    <script type="text/javascript">
+      var disqus_shortname = 'www-jasonosajima-com';
+      var disqus_identifier = '/ns.html';
+      var disqus_url = 'http://www.jasonosajima.com/ns.html';
+      var disqus_title = 'word2vec - Negative Sampling';
+      (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = "//" + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+      })();
+    </script>
+  </section>
+
+</div>
+
+<style type="text/css">
+{
+    max-width: 700px;
+}
+
+.text_cell .prompt {
+    display: none;
+}
+
+div.cell {
+    padding: 0;
+}
+
+div.text_cell_render {
+    padding: 0;
+}
+
+div.prompt {
+    font-size: 13px;
+}
+
+div.input_prompt {
+    padding: .7em 0.2em;
+}
+
+div.output_prompt {
+    padding: .4em .2em;
+}
+
+div.input_area {
+    margin: .2em 0.4em;
+    max-width: 580px;
+}
+
+table.dataframe {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    line-height: 20px;
+}
+
+table.dataframe th, td {
+    padding: 4px;
+    text-align: left;
+}
+
+pre code {
+    background-color: inherit;
+}</style>
+
+        </div>
+<!--
+    <footer>
+      <p>
+        © 2012-2017 Jason Osajima, license <a href=""> </a>
+        unless otherwise noted.
+        Generated by <a href= "http://docs.getpelican.com/">Pelican</a>.
+      </p>
+    </footer>
+-->
+    <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-15195255-2']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-15195255-2');
+    ga('send', 'pageview');
+</script>
+    </body>
+</html>

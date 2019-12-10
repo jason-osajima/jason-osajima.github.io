@@ -411,7 +411,8 @@ article .meta a.comments_btn:hover {
         </header>
 
         <div class="article_content">
-            <h2>Introduction</h2>
+            <p><em>This is part one in a two-part series on the word2vec. Part one is about CBOW and Skip-Gram. Part two is about negative sampling and can be found <a href="/ns">here</a>.</em></p>
+<h2>Introduction</h2>
 
 
 <p>word2vec is an iterative model that can be used to create embeddings of words (or embeddings of <a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e">pretty much anything</a>). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.
@@ -432,7 +433,7 @@ article .meta a.comments_btn:hover {
 
 
 <p>So the goal of using word2vec is to learn embeddings for all of the words in our corpus. In this case, the words in our corpus are:</p>
-<div class="highlight"><pre><span></span><span class="err">{</span><span class="s1">&#39;the&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;cat&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;loves&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;fish&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;hates&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="err">}</span>
+<div class="highlight"><pre><span></span><span class="n">word_to_ix</span> <span class="o">=</span> <span class="err">{</span><span class="s1">&#39;the&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;cat&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;loves&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;fish&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;hates&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="err">}</span>
 </pre></div>
 
 
@@ -577,7 +578,7 @@ article .meta a.comments_btn:hover {
 
 
 <h3>Conclusion</h3>
-<p>So we now know how to implement CBOW and SkipGram word2vec in tensorflow. Hooray! Don't get too excited though: these implementations are not very practical. The reason is because the number of words will not typically be 6, like in our example. Let's imagine that we implemented word2vec using all of wikipedia. Wikipedia has 2.9 billion words. We can't have a 2.9 billion one-hot or multi-hot encoded output. Luckily, we have a way to get around this by using negative sampling, which was introduced in the <a href="https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">original word2vec paper</a>.</p>
+<p>So we now know how to implement CBOW and SkipGram word2vec in tensorflow. Hooray! Don't get too excited though: these implementations are not very practical. The reason is because the number of words will not typically be 6, like in our example. Let's imagine that we implemented word2vec using all of wikipedia. There are around 170,000 words currently used in the English language. We can't have a 170,000 one-hot or multi-hot encoded output. Luckily, we have a way to get around this by using negative sampling], which was introduced in the <a href="https://papers.nips.cc/ paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">original word2vec paper</a>and will be discussed in <a href="/ns">part two</a>.</p>
 <h3>Resources</h3>
 <p>1) <a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf">Notes from Stanford NLP course</a></p>
 <p>2) <a href="https://arxiv.org/pdf/1301.3781.pdf">word2vec paper</a></p>
@@ -650,6 +651,7 @@ article .meta a.comments_btn:hover {
             <div>
                     <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
                     <a href="http://www.jasonosajima.com/tag/natural-language-processing.html" class="tag">natural language processing</a>
+                    <a href="http://www.jasonosajima.com/tag/word2vec.html" class="tag">word2vec</a>
             </div>
         </div>
     </article>

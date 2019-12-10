@@ -407,6 +407,34 @@ article .meta a.comments_btn:hover {
 
   <article>
     <header>
+      <h2><a href="http://www.jasonosajima.com/ns.html">word2vec - Negative Sampling</a></h2>
+      <time datetime="" title="2019-12-10T00:00:00-08:00" pubdate>Tue 10 December 2019</time>
+    </header>
+
+    <div class="article_content">
+      
+<p>In the <a href="https://papers.nips.cc/ paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">original word2vec paper</a>, the authors introduced Negative Sampling, which is a technique to overcome the computational limitations of vanilla Skip-Gram. Recall that in the <a href="/ns">previous post</a>, we had a vocabulary of 6 words, so the output of Skip-Gram was a vector of 6 binary elements. However, if we had a vocabulary of, say 170,000 words, we'd find it difficult to compute our loss function for every step of training the model. </p>
+<p>In this post, we will discuss the changes to Skip-Gram using negative sampling and update our Tensorflow word2vec implementation to use it.
+</p>
+    </div>
+
+    <div class="meta">
+      <div>
+        <a href="http://www.jasonosajima.com/ns.html" class="read_more">Read more &#8594;</a>
+      </div>
+
+      <div>
+            <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
+            <a href="http://www.jasonosajima.com/tag/natural-language-processing.html" class="tag">natural language processing</a>
+            <a href="http://www.jasonosajima.com/tag/word2vec.html" class="tag">word2vec</a>
+      </div>
+
+    </div>
+
+  </article>
+  <div class="separator"></div>
+  <article>
+    <header>
       <h2><a href="http://www.jasonosajima.com/word2vec.html">word2vec - CBOW and Skip-Gram</a></h2>
       <time datetime="" title="2019-12-09T00:00:00-08:00" pubdate>Mon 09 December 2019</time>
     </header>
@@ -425,6 +453,7 @@ article .meta a.comments_btn:hover {
       <div>
             <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
             <a href="http://www.jasonosajima.com/tag/natural-language-processing.html" class="tag">natural language processing</a>
+            <a href="http://www.jasonosajima.com/tag/word2vec.html" class="tag">word2vec</a>
       </div>
 
     </div>
