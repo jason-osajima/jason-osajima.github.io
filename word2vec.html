@@ -6,7 +6,7 @@
         <meta name="author" content="Jason Osajima">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width">
-        <title>word2vec | Jason {osa-jima}</title>
+        <title>word2vec CBOW and Skip-Gram | Jason {osa-jima}</title>
 
 	<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
 	<link rel="icon" href="/favicon.ico" type="image/x-icon">
@@ -406,17 +406,16 @@ article .meta a.comments_btn:hover {
 <div class="container post">
     <article>
         <header>
-            <h1>word2vec</h1>
-            <time datetime="article.date.isoformat()" pubdate>Fri 22 November 2019</time>
+            <h1>word2vec CBOW and Skip-Gram</h1>
+            <time datetime="article.date.isoformat()" pubdate>Mon 09 December 2019</time>
         </header>
 
         <div class="article_content">
             <h2>Introduction</h2>
 
 
-
-
-<p>word2vec is an iterative model that can be used to create embeddings of words (or embeddings of <a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e">pretty much anything</a>). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.</p>
+<p>word2vec is an iterative model that can be used to create embeddings of words (or embeddings of <a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e">pretty much anything</a>). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.
+</p>
 <h3>Why use word2vec?</h3>
 <p>For a lot of machine learning tasks, we need to figure out the relationship between items. Take for example an NLP task where we use words as items. We somehow need to learn numerical representations of words so that the model can understand the relationship between words. The most straightforward way of representing words numerically would be to represent them as vectors. So, imagine that we trained a model and learned vectors for each word. We'd expect that the word "cat" and "dog" would be close in distance since they are both pets, and that "cat" would be far from "gym", because there isn't much of a relationship between these two words. We sometimes call these vectors embeddings.</p>
 <h3>What is word2vec?</h3>
@@ -650,7 +649,6 @@ article .meta a.comments_btn:hover {
         <div class="meta">
             <div>
                     <a href="http://www.jasonosajima.com/tag/machine-learning.html" class="tag">machine learning</a>
-                    <a href="http://www.jasonosajima.com/tag/linear-algebra.html" class="tag">linear algebra</a>
                     <a href="http://www.jasonosajima.com/tag/natural-language-processing.html" class="tag">natural language processing</a>
             </div>
         </div>
@@ -663,7 +661,7 @@ article .meta a.comments_btn:hover {
       var disqus_shortname = 'www-jasonosajima-com';
       var disqus_identifier = '/word2vec.html';
       var disqus_url = 'http://www.jasonosajima.com/word2vec.html';
-      var disqus_title = 'word2vec';
+      var disqus_title = 'word2vec CBOW and Skip-Gram';
       (function() {
         var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
         dsq.src = "//" + disqus_shortname + '.disqus.com/embed.js';
