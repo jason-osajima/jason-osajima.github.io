@@ -1,144 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Jason {osa-jima} - posts</title><link href="http://www.jasonosajima.com/" rel="alternate"></link><link href="http://www.jasonosajima.com/feeds/posts.atom.xml" rel="self"></link><id>http://www.jasonosajima.com/</id><updated>2019-11-22T00:00:00-08:00</updated><subtitle>Machine Learning concepts, deconstructed.</subtitle><entry><title>Singular Value Decomposition</title><link href="http://www.jasonosajima.com/svd.html" rel="alternate"></link><published>2019-11-22T00:00:00-08:00</published><updated>2019-11-22T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-11-22:/svd.html</id><summary type="html">
-&lt;p&gt;Some quick notes about Singular Value Decomposition (SVD) to develop an intuition that will help solve problems related to collaborative filtering, natural language processing (NLP), dimensionality reduction, image compression, denoising data etc.&lt;/p&gt;
-</summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Jason {osa-jima} - posts</title><link href="http://www.jasonosajima.com/" rel="alternate"></link><link href="http://www.jasonosajima.com/feeds/posts.atom.xml" rel="self"></link><id>http://www.jasonosajima.com/</id><updated>2019-12-09T00:00:00-08:00</updated><subtitle>Machine Learning concepts, deconstructed.</subtitle><entry><title>word2vec - CBOW and Skip-Gram</title><link href="http://www.jasonosajima.com/word2vec.html" rel="alternate"></link><published>2019-12-09T00:00:00-08:00</published><updated>2019-12-09T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-12-09:/word2vec.html</id><summary type="html">
+&lt;p&gt;word2vec is an iterative model that can be used to create embeddings of words (or embeddings of &lt;a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e"&gt;pretty much anything&lt;/a&gt;). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.
+&lt;/p&gt;</summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
 
 
-&lt;p&gt;Some quick notes about Singular Value Decomposition (SVD) to develop an intuition that will help solve problems related to collaborative filtering, natural language processing (NLP), dimensionality reduction, image compression, denoising data etc.&lt;/p&gt;
-
-
-&lt;p&gt;Let's imagine we have a matrix &lt;span class="math"&gt;\(\textbf{A}\)&lt;/span&gt; of size &lt;span class="math"&gt;\(m\)&lt;/span&gt; by &lt;span class="math"&gt;\(n\)&lt;/span&gt; where &lt;span class="math"&gt;\(m\)&lt;/span&gt;  is the number of rows and  &lt;span class="math"&gt;\(n\)&lt;/span&gt; is the number of columns. If we were building a recommender system, we can think of each row representing a user, each column representing an item, and each element in the matrix indicating whether the user has interacted with the item. In NLP, we can think of each row representing a document, and each column representing a term.&lt;/p&gt;
-&lt;p&gt;The goal of singular value decomposition (SVD) is to take this matrix &lt;span class="math"&gt;\(A\)&lt;/span&gt; and represent it as the product of three matricies:&lt;/p&gt;
-&lt;div class="math"&gt;$$\textbf{A} = \textbf{U}\mathbb{\Sigma}
-\textbf{V}^T$$&lt;/div&gt;
-&lt;p&gt;The dimensions of &lt;span class="math"&gt;\(U\)&lt;/span&gt; are &lt;span class="math"&gt;\(m\)&lt;/span&gt; by &lt;span class="math"&gt;\(r\)&lt;/span&gt;. This matrix stores the left  singular vectors. The dimensions of &lt;span class="math"&gt;\(\mathbb{\Sigma}\)&lt;/span&gt; is &lt;span class="math"&gt;\(r\)&lt;/span&gt; by &lt;span class="math"&gt;\(r\)&lt;/span&gt;. This is a diagonal matrix, and contains singular values. The dimensions of &lt;span class="math"&gt;\(V\)&lt;/span&gt; are &lt;span class="math"&gt;\(n\)&lt;/span&gt; by &lt;span class="math"&gt;\(r\)&lt;/span&gt;. Before we get into why this decomposition is useful, let's talk a little bit about the properties of the singular value decomposition of a matrix. Namely:&lt;/p&gt;
-&lt;p&gt;It is always possible to decompose a real matrix &lt;span class="math"&gt;\(\textbf{A}\)&lt;/span&gt; (meaning all values are real numbers) into &lt;span class="math"&gt;\(\textbf{A} = \textbf{U}\mathbb{\Sigma}
-\textbf{V}^T\)&lt;/span&gt;. In addition, there is only one unique singular value decomposition for each  &lt;/p&gt;
-&lt;p&gt;So why do people use SVD? I think the most interesting way  people use SVD is to create embeddings, which we will talk about next (and will help us understand the three matricies of SVD better).&lt;/p&gt;
-&lt;h3&gt;Using SVD for embeddings&lt;/h3&gt;
-&lt;p&gt;So let's take the example inspired from this &lt;a href="https://www.youtube.com/watch?v=P5mlg91as1c&amp;amp;t=236s"&gt;video&lt;/a&gt;, where we have a matrix &lt;span class="math"&gt;\(\textbf{A}\)&lt;/span&gt; that has the ratings users give to  movies. Let's say we want to figure out which movies are similar and which users are similar.&lt;/p&gt;
-&lt;div class="math"&gt;$$\textbf{A} = \begin{bmatrix}
-  1 &amp;amp; 1 &amp;amp; 4 \\
-   5 &amp;amp; 5 &amp;amp; 1 \\
-   2 &amp;amp; 1 &amp;amp; 5
-\end{bmatrix}$$&lt;/div&gt;
-&lt;p&gt;The rows of our matrix represent users, the columns of our matrix represent movies, and the values represent the rating a user gives to a movie. Since Disney+ just came out, let's imagine that our three movies are &lt;em&gt;Star Wars&lt;/em&gt;, &lt;em&gt;Avengers&lt;/em&gt;, and &lt;em&gt;Lady and the Tramp&lt;/em&gt;. Let's take a look at the ratings that are users gave our three movies. Right away, you can tell that user 1 and user 3 are similar because they both  disliked &lt;em&gt;Star Wars&lt;/em&gt; and &lt;em&gt;Avengers&lt;/em&gt; and liked &lt;em&gt;Lady and the Tramp&lt;/em&gt;. User 2 is the opposite because she likes both &lt;em&gt;Star Wars&lt;/em&gt; and &lt;em&gt;Avengers&lt;/em&gt; and dislikes &lt;em&gt;Lady and the Tramp&lt;/em&gt;.&lt;/p&gt;
-&lt;p&gt;Let's now take a look at the  SVD  for this matrix. We can use the &lt;code&gt;numpy&lt;/code&gt; function &lt;code&gt;svd&lt;/code&gt; to solve it quickly:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;numpy&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;np&lt;/span&gt;
-
-&lt;span class="n"&gt;A&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="kp"&gt;array&lt;/span&gt;&lt;span class="p"&gt;([[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;]])&lt;/span&gt; 
-&lt;span class="n"&gt;U&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;S&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;VT&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;linalg&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="kp"&gt;svd&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;A&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;full_matrices&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;False&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-&lt;span class="c1"&gt;# convert S to diagonal matrix&lt;/span&gt;
-&lt;span class="n"&gt;S&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="kp"&gt;diag&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;S&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;The results that we get after running this code are as follows:&lt;/p&gt;
-&lt;div class="math"&gt;$$\textbf{U} = \begin{bmatrix}
-  -0.40865502 &amp;amp; 0.47145889  &amp;amp; -0.78149062 \\
-   -0.73017597 &amp;amp; -0.68260113 &amp;amp; -0.02997898 \\
-   -0.54758024 &amp;amp; 0.55837461 &amp;amp; 0.62319633
-\end{bmatrix}$$&lt;/div&gt;
-&lt;div class="math"&gt;$$\mathbb{\Sigma} = \begin{bmatrix}
-  8.59266627 &amp;amp; 0 &amp;amp; 0 \\
-  0 &amp;amp; 4.99702707 &amp;amp; 0 \\
-  0 &amp;amp; 0 &amp;amp; 0.44250069
-\end{bmatrix}$$&lt;/div&gt;
-&lt;div class="math"&gt;$$\textbf{V}^T = \begin{bmatrix}
-  -0.59989475 &amp;amp; -0.53616828 &amp;amp; -0.5938433 \\
-   -0.36517664 &amp;amp; -0.476918 &amp;amp; 0.79949687 \\
-   0.71187942 &amp;amp; -0.69647167 &amp;amp; -0.09030447
-\end{bmatrix}$$&lt;/div&gt;
-&lt;p&gt;We can think of the rows of the matrix &lt;span class="math"&gt;\(U\)&lt;/span&gt; as embeddings for our three users. Similarly, we can think of the three columns as the embeddings for our three movies. You can think of embeddings as summaries of what we know about things (in this case, what we know about users and movies).&lt;/p&gt;
-&lt;p&gt;So how can we use these embeddings? The most straightforward thing we can do is use them to find the similarity between users or movies. So recall from above that we posited that user 1 and user 3 have similar preferences.&lt;/p&gt;
-&lt;p&gt;The first value of user 1's embedding is -0.4087. Similarly, the first value of user 2's embedding is -0.7302 and the first value of user 3's embedding is -0.5476. &lt;/p&gt;
-&lt;p&gt;Notice that the absolute value of the difference between user 1 and user 2's values is 0.1389 whereas the difference between user 1 and user 3's values is 0.3215. So that matches our intuition, that user 1 and user 2 will  have similar embeddings because they have similar preferences. Cool!&lt;/p&gt;
-&lt;p&gt;Why did we pick the first value of the embedding vector to compare instead of the second or third? The values are sorted by importance. You can check the values importance by looking at the diagonal values of &lt;span class="math"&gt;\(\Sigma\)&lt;/span&gt;:&lt;/p&gt;
-&lt;div class="math"&gt;$$[8.5927, 4.9970, 0.4425]$$&lt;/div&gt;
-&lt;p&gt;What this tells you is that the first value of the embeddings is roughly twice as "important" as the second value, and twenty times as "important" as the third value.&lt;/p&gt;
-&lt;p&gt;Notice that we could have compared the embeddings for movies by using the matrix &lt;span class="math"&gt;\(V\)&lt;/span&gt; instead of &lt;span class="math"&gt;\(U\)&lt;/span&gt;.&lt;/p&gt;
-&lt;p&gt;So what people usually do to create embeddings for users, items, words, documents, etc. is to take the top &lt;span class="math"&gt;\(k\)&lt;/span&gt; values from the vectors created using SVD. Some people refer to this strategy as Latent Semantic Analysis, or LSA.&lt;/p&gt;
-&lt;p&gt;How do you know what the value of &lt;span class="math"&gt;\(k\)&lt;/span&gt; is? A lot of people use trial and error, or by checking the &lt;a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html"&gt;silhouette score&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Once you create the embeddings, how do you tell how similar embeddings are? People use cosine similarity, manhattan distance (&lt;span class="math"&gt;\(L1\)&lt;/span&gt;), or euclidian distance (&lt;span class="math"&gt;\(L2\)&lt;/span&gt;). In the example above, I used manhattan distance. Again, there's no default best metric to use and in practice people use trial and error.&lt;/p&gt;
-&lt;p&gt;Some of the drawbacks of this method (as mentioned &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;here&lt;/a&gt;): &lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;Dimensions of the matrix can change often (adding new users or movies), and each time the dimensions change, SVD must be performed again. &lt;/li&gt;
-&lt;li&gt;The matrix can be very high dimensional&lt;/li&gt;
-&lt;li&gt;Computational cost to perform SVD for a &lt;span class="math"&gt;\(m\)&lt;/span&gt; by &lt;span class="math"&gt;\(n\)&lt;/span&gt; matrix is &lt;span class="math"&gt;\(O(mn\)&lt;/span&gt;)&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;For these reasons, iterative methods tend to be better, the simplest of these being &lt;a href="/word2vec"&gt;word2vec&lt;/a&gt;.&lt;/p&gt;
-&lt;h3&gt;Resources&lt;/h3&gt;
-&lt;p&gt;1)  &lt;a href="https://www.youtube.com/watch?v=P5mlg91as1c&amp;amp;t=236s"&gt;Great video on SVD that explains the math&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;2) &lt;a href="http://andrew.gibiansky.com/blog/mathematics/cool-linear-algebra-singular-value-decomposition/"&gt;Using SVD to coompress an image example&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;3) &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;Notes from Stanford NLP course&lt;/a&gt;&lt;/p&gt;
-&lt;script type="text/javascript"&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
-    var align = "center",
-        indent = "0em",
-        linebreak = "false";
-
-    if (false) {
-        align = (screen.width &lt; 768) ? "left" : align;
-        indent = (screen.width &lt; 768) ? "0em" : indent;
-        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
-    }
-
-    var mathjaxscript = document.createElement('script');
-    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
-    mathjaxscript.type = 'text/javascript';
-    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
-
-    var configscript = document.createElement('script');
-    configscript.type = 'text/x-mathjax-config';
-    configscript[(window.opera ? "innerHTML" : "text")] =
-        "MathJax.Hub.Config({" +
-        "    config: ['MMLorHTML.js']," +
-        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'none' } }," +
-        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
-        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
-        "    displayAlign: '"+ align +"'," +
-        "    displayIndent: '"+ indent +"'," +
-        "    showMathMenu: true," +
-        "    messageStyle: 'normal'," +
-        "    tex2jax: { " +
-        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
-        "        displayMath: [ ['$$','$$'] ]," +
-        "        processEscapes: true," +
-        "        preview: 'TeX'," +
-        "    }, " +
-        "    'HTML-CSS': { " +
-        "        availableFonts: ['STIX', 'TeX']," +
-        "        preferredFont: 'STIX'," +
-        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'black ! important'} }," +
-        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
-        "    }, " +
-        "}); " +
-        "if ('default' !== 'default') {" +
-            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
-                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
-                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
-                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
-                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
-                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
-            "});" +
-            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
-                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
-                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
-                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
-                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
-                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
-            "});" +
-        "}";
-
-    (document.body || document.getElementsByTagName('head')[0]).appendChild(configscript);
-    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
-}
-&lt;/script&gt;</content><category term="posts"></category><category term="machine learning"></category><category term="linear algebra"></category><category term="natural language processing"></category></entry><entry><title>word2vec</title><link href="http://www.jasonosajima.com/word2vec.html" rel="alternate"></link><published>2019-11-22T00:00:00-08:00</published><updated>2019-11-22T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-11-22:/word2vec.html</id><summary type="html">
-</summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
-
-
-
-
-&lt;p&gt;word2vec is an iterative model that can be used to create embeddings of words (or embeddings of &lt;a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e"&gt;pretty much anything&lt;/a&gt;). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.&lt;/p&gt;
+&lt;p&gt;word2vec is an iterative model that can be used to create embeddings of words (or embeddings of &lt;a href="https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e"&gt;pretty much anything&lt;/a&gt;). In this post, we will talk briefly about why you would want to use word2vec, break down the Continuous Bag of Words (CBOW) and skip gram word2vec model, and implement it in tensorflow.
+&lt;/p&gt;
 &lt;h3&gt;Why use word2vec?&lt;/h3&gt;
 &lt;p&gt;For a lot of machine learning tasks, we need to figure out the relationship between items. Take for example an NLP task where we use words as items. We somehow need to learn numerical representations of words so that the model can understand the relationship between words. The most straightforward way of representing words numerically would be to represent them as vectors. So, imagine that we trained a model and learned vectors for each word. We'd expect that the word "cat" and "dog" would be close in distance since they are both pets, and that "cat" would be far from "gym", because there isn't much of a relationship between these two words. We sometimes call these vectors embeddings.&lt;/p&gt;
 &lt;h3&gt;What is word2vec?&lt;/h3&gt;
@@ -305,6 +172,139 @@
 &lt;p&gt;1) &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;Notes from Stanford NLP course&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;2) &lt;a href="https://arxiv.org/pdf/1301.3781.pdf"&gt;word2vec paper&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;3) &lt;a href="https://stackoverflow.com/questions/38287772/cbow-v-s-skip-gram-why-invert-context-and-target-words"&gt;difference between skipgram and cbow&lt;/a&gt;&lt;/p&gt;
+&lt;script type="text/javascript"&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width &lt; 768) ? "left" : align;
+        indent = (screen.width &lt; 768) ? "0em" : indent;
+        linebreak = (screen.width &lt; 768) ? 'true' : linebreak;
+    }
+
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/latest.js?config=TeX-AMS-MML_HTMLorMML';
+
+    var configscript = document.createElement('script');
+    configscript.type = 'text/x-mathjax-config';
+    configscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'none' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    messageStyle: 'normal'," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        availableFonts: ['STIX', 'TeX']," +
+        "        preferredFont: 'STIX'," +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'black ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(configscript);
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+&lt;/script&gt;</content><category term="posts"></category><category term="machine learning"></category><category term="natural language processing"></category></entry><entry><title>Singular Value Decomposition</title><link href="http://www.jasonosajima.com/svd.html" rel="alternate"></link><published>2019-11-22T00:00:00-08:00</published><updated>2019-11-22T00:00:00-08:00</updated><author><name>Jason Osajima</name></author><id>tag:www.jasonosajima.com,2019-11-22:/svd.html</id><summary type="html">
+&lt;p&gt;Some quick notes about Singular Value Decomposition (SVD) to develop an intuition that will help solve problems related to collaborative filtering, natural language processing (NLP), dimensionality reduction, image compression, denoising data etc.&lt;/p&gt;
+</summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
+
+
+&lt;p&gt;Some quick notes about Singular Value Decomposition (SVD) to develop an intuition that will help solve problems related to collaborative filtering, natural language processing (NLP), dimensionality reduction, image compression, denoising data etc.&lt;/p&gt;
+
+
+&lt;p&gt;Let's imagine we have a matrix &lt;span class="math"&gt;\(\textbf{A}\)&lt;/span&gt; of size &lt;span class="math"&gt;\(m\)&lt;/span&gt; by &lt;span class="math"&gt;\(n\)&lt;/span&gt; where &lt;span class="math"&gt;\(m\)&lt;/span&gt;  is the number of rows and  &lt;span class="math"&gt;\(n\)&lt;/span&gt; is the number of columns. If we were building a recommender system, we can think of each row representing a user, each column representing an item, and each element in the matrix indicating whether the user has interacted with the item. In NLP, we can think of each row representing a document, and each column representing a term.&lt;/p&gt;
+&lt;p&gt;The goal of singular value decomposition (SVD) is to take this matrix &lt;span class="math"&gt;\(A\)&lt;/span&gt; and represent it as the product of three matricies:&lt;/p&gt;
+&lt;div class="math"&gt;$$\textbf{A} = \textbf{U}\mathbb{\Sigma}
+\textbf{V}^T$$&lt;/div&gt;
+&lt;p&gt;The dimensions of &lt;span class="math"&gt;\(U\)&lt;/span&gt; are &lt;span class="math"&gt;\(m\)&lt;/span&gt; by &lt;span class="math"&gt;\(r\)&lt;/span&gt;. This matrix stores the left  singular vectors. The dimensions of &lt;span class="math"&gt;\(\mathbb{\Sigma}\)&lt;/span&gt; is &lt;span class="math"&gt;\(r\)&lt;/span&gt; by &lt;span class="math"&gt;\(r\)&lt;/span&gt;. This is a diagonal matrix, and contains singular values. The dimensions of &lt;span class="math"&gt;\(V\)&lt;/span&gt; are &lt;span class="math"&gt;\(n\)&lt;/span&gt; by &lt;span class="math"&gt;\(r\)&lt;/span&gt;. Before we get into why this decomposition is useful, let's talk a little bit about the properties of the singular value decomposition of a matrix. Namely:&lt;/p&gt;
+&lt;p&gt;It is always possible to decompose a real matrix &lt;span class="math"&gt;\(\textbf{A}\)&lt;/span&gt; (meaning all values are real numbers) into &lt;span class="math"&gt;\(\textbf{A} = \textbf{U}\mathbb{\Sigma}
+\textbf{V}^T\)&lt;/span&gt;. In addition, there is only one unique singular value decomposition for each  &lt;/p&gt;
+&lt;p&gt;So why do people use SVD? I think the most interesting way  people use SVD is to create embeddings, which we will talk about next (and will help us understand the three matricies of SVD better).&lt;/p&gt;
+&lt;h3&gt;Using SVD for embeddings&lt;/h3&gt;
+&lt;p&gt;So let's take the example inspired from this &lt;a href="https://www.youtube.com/watch?v=P5mlg91as1c&amp;amp;t=236s"&gt;video&lt;/a&gt;, where we have a matrix &lt;span class="math"&gt;\(\textbf{A}\)&lt;/span&gt; that has the ratings users give to  movies. Let's say we want to figure out which movies are similar and which users are similar.&lt;/p&gt;
+&lt;div class="math"&gt;$$\textbf{A} = \begin{bmatrix}
+  1 &amp;amp; 1 &amp;amp; 4 \\
+   5 &amp;amp; 5 &amp;amp; 1 \\
+   2 &amp;amp; 1 &amp;amp; 5
+\end{bmatrix}$$&lt;/div&gt;
+&lt;p&gt;The rows of our matrix represent users, the columns of our matrix represent movies, and the values represent the rating a user gives to a movie. Since Disney+ just came out, let's imagine that our three movies are &lt;em&gt;Star Wars&lt;/em&gt;, &lt;em&gt;Avengers&lt;/em&gt;, and &lt;em&gt;Lady and the Tramp&lt;/em&gt;. Let's take a look at the ratings that are users gave our three movies. Right away, you can tell that user 1 and user 3 are similar because they both  disliked &lt;em&gt;Star Wars&lt;/em&gt; and &lt;em&gt;Avengers&lt;/em&gt; and liked &lt;em&gt;Lady and the Tramp&lt;/em&gt;. User 2 is the opposite because she likes both &lt;em&gt;Star Wars&lt;/em&gt; and &lt;em&gt;Avengers&lt;/em&gt; and dislikes &lt;em&gt;Lady and the Tramp&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;Let's now take a look at the  SVD  for this matrix. We can use the &lt;code&gt;numpy&lt;/code&gt; function &lt;code&gt;svd&lt;/code&gt; to solve it quickly:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;numpy&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;np&lt;/span&gt;
+
+&lt;span class="n"&gt;A&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="kp"&gt;array&lt;/span&gt;&lt;span class="p"&gt;([[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;]])&lt;/span&gt; 
+&lt;span class="n"&gt;U&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;S&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;VT&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;linalg&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="kp"&gt;svd&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;A&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;full_matrices&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;False&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="c1"&gt;# convert S to diagonal matrix&lt;/span&gt;
+&lt;span class="n"&gt;S&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="kp"&gt;diag&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;S&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The results that we get after running this code are as follows:&lt;/p&gt;
+&lt;div class="math"&gt;$$\textbf{U} = \begin{bmatrix}
+  -0.40865502 &amp;amp; 0.47145889  &amp;amp; -0.78149062 \\
+   -0.73017597 &amp;amp; -0.68260113 &amp;amp; -0.02997898 \\
+   -0.54758024 &amp;amp; 0.55837461 &amp;amp; 0.62319633
+\end{bmatrix}$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\mathbb{\Sigma} = \begin{bmatrix}
+  8.59266627 &amp;amp; 0 &amp;amp; 0 \\
+  0 &amp;amp; 4.99702707 &amp;amp; 0 \\
+  0 &amp;amp; 0 &amp;amp; 0.44250069
+\end{bmatrix}$$&lt;/div&gt;
+&lt;div class="math"&gt;$$\textbf{V}^T = \begin{bmatrix}
+  -0.59989475 &amp;amp; -0.53616828 &amp;amp; -0.5938433 \\
+   -0.36517664 &amp;amp; -0.476918 &amp;amp; 0.79949687 \\
+   0.71187942 &amp;amp; -0.69647167 &amp;amp; -0.09030447
+\end{bmatrix}$$&lt;/div&gt;
+&lt;p&gt;We can think of the rows of the matrix &lt;span class="math"&gt;\(U\)&lt;/span&gt; as embeddings for our three users. Similarly, we can think of the three columns as the embeddings for our three movies. You can think of embeddings as summaries of what we know about things (in this case, what we know about users and movies).&lt;/p&gt;
+&lt;p&gt;So how can we use these embeddings? The most straightforward thing we can do is use them to find the similarity between users or movies. So recall from above that we posited that user 1 and user 3 have similar preferences.&lt;/p&gt;
+&lt;p&gt;The first value of user 1's embedding is -0.4087. Similarly, the first value of user 2's embedding is -0.7302 and the first value of user 3's embedding is -0.5476. &lt;/p&gt;
+&lt;p&gt;Notice that the absolute value of the difference between user 1 and user 2's values is 0.1389 whereas the difference between user 1 and user 3's values is 0.3215. So that matches our intuition, that user 1 and user 2 will  have similar embeddings because they have similar preferences. Cool!&lt;/p&gt;
+&lt;p&gt;Why did we pick the first value of the embedding vector to compare instead of the second or third? The values are sorted by importance. You can check the values importance by looking at the diagonal values of &lt;span class="math"&gt;\(\Sigma\)&lt;/span&gt;:&lt;/p&gt;
+&lt;div class="math"&gt;$$[8.5927, 4.9970, 0.4425]$$&lt;/div&gt;
+&lt;p&gt;What this tells you is that the first value of the embeddings is roughly twice as "important" as the second value, and twenty times as "important" as the third value.&lt;/p&gt;
+&lt;p&gt;Notice that we could have compared the embeddings for movies by using the matrix &lt;span class="math"&gt;\(V\)&lt;/span&gt; instead of &lt;span class="math"&gt;\(U\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;So what people usually do to create embeddings for users, items, words, documents, etc. is to take the top &lt;span class="math"&gt;\(k\)&lt;/span&gt; values from the vectors created using SVD. Some people refer to this strategy as Latent Semantic Analysis, or LSA.&lt;/p&gt;
+&lt;p&gt;How do you know what the value of &lt;span class="math"&gt;\(k\)&lt;/span&gt; is? A lot of people use trial and error, or by checking the &lt;a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html"&gt;silhouette score&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Once you create the embeddings, how do you tell how similar embeddings are? People use cosine similarity, manhattan distance (&lt;span class="math"&gt;\(L1\)&lt;/span&gt;), or euclidian distance (&lt;span class="math"&gt;\(L2\)&lt;/span&gt;). In the example above, I used manhattan distance. Again, there's no default best metric to use and in practice people use trial and error.&lt;/p&gt;
+&lt;p&gt;Some of the drawbacks of this method (as mentioned &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;here&lt;/a&gt;): &lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Dimensions of the matrix can change often (adding new users or movies), and each time the dimensions change, SVD must be performed again. &lt;/li&gt;
+&lt;li&gt;The matrix can be very high dimensional&lt;/li&gt;
+&lt;li&gt;Computational cost to perform SVD for a &lt;span class="math"&gt;\(m\)&lt;/span&gt; by &lt;span class="math"&gt;\(n\)&lt;/span&gt; matrix is &lt;span class="math"&gt;\(O(mn\)&lt;/span&gt;)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;For these reasons, iterative methods tend to be better, the simplest of these being &lt;a href="/word2vec"&gt;word2vec&lt;/a&gt;.&lt;/p&gt;
+&lt;h3&gt;Resources&lt;/h3&gt;
+&lt;p&gt;1)  &lt;a href="https://www.youtube.com/watch?v=P5mlg91as1c&amp;amp;t=236s"&gt;Great video on SVD that explains the math&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;2) &lt;a href="http://andrew.gibiansky.com/blog/mathematics/cool-linear-algebra-singular-value-decomposition/"&gt;Using SVD to coompress an image example&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;3) &lt;a href="https://github.com/stanfordnlp/cs224n-winter17-notes/blob/master/notes1.pdf"&gt;Notes from Stanford NLP course&lt;/a&gt;&lt;/p&gt;
 &lt;script type="text/javascript"&gt;if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
     var align = "center",
         indent = "0em",
